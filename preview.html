@@ -1284,6 +1284,25 @@
       white-space: pre;
       color: #0f172a;
     }
+    .report-sheet {
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 0.9rem;
+      max-height: min(52vh, 440px);
+      overflow: auto;
+    }
+    /* Printing the session report prints the report and nothing else. */
+    @media print {
+      body.printing-report > *:not(#report-modal) { display: none !important; }
+      body.printing-report #report-modal { position: static; display: block; background: none; backdrop-filter: none; }
+      body.printing-report #report-modal .modal-card { box-shadow: none; border: none; max-width: none; width: 100%; padding: 0; background: #fff; }
+      body.printing-report #report-modal h3,
+      body.printing-report #report-subtitle,
+      body.printing-report #report-format-note,
+      body.printing-report #report-modal .modal-action-btns { display: none !important; }
+      body.printing-report .report-sheet { max-height: none; overflow: visible; border: none; padding: 0; background: none; }
+    }
     /* Sentence Source / Pack Bar */
     .pack-bar {
       display: flex;
@@ -2249,6 +2268,49 @@
       .nav-divider { display: none; }
       .progress-pop, .more-menu { left: 0; right: 0; width: auto; }
     }
+
+    /* ---- The answer key, four ways (31 October) ---- */
+    .feedback-box { container-type: inline-size; }
+    .ak-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 8px; font-family: var(--font-roboto); font-size: 0.85rem; }
+    .ak-bar-l { color: #6b7280; margin-right: 2px; }
+    .ak-seg { border: 1px solid #d1d5db; background: #fff; color: #1f2937; border-radius: 999px; padding: 3px 11px; font: 500 0.82rem var(--font-roboto); cursor: pointer; }
+    .ak-seg[aria-pressed="true"] { background: #1f2937; color: #fff; border-color: #1f2937; }
+    .ak-only { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; color: #374151; }
+    .ak-only input:disabled + * , .ak-only:has(input:disabled) { opacity: .6; }
+    .ak-body { background: #fff; border-radius: 8px; padding: 4px 10px 8px; }
+    .ak-h { font: 700 0.72rem var(--font-roboto); letter-spacing: .06em; text-transform: uppercase; color: #6b7280; margin: 12px 0 4px; }
+    .ak-row { display: grid; grid-template-columns: minmax(90px, 150px) minmax(90px, 170px) 1fr 30px; gap: 10px; padding: 6px 2px; border-bottom: 1px solid #e5e7eb; align-items: start; }
+    .ak-w { font-family: var(--font-cinzel); font-weight: 700; border-left: 4px solid #9ca3af; padding-left: 7px; }
+    .ak-g { color: #6b7280; font-size: 0.85rem; font-family: var(--font-roboto); }
+    .ak-t { font-family: var(--font-roboto); }
+    .ak-mark { text-align: right; font-weight: 700; font-family: var(--font-roboto); }
+    .ak-mark.ok { color: #15803d; } .ak-mark.bad { color: #b91c1c; }
+    .ak-chip { display: inline-flex; flex-direction: column; vertical-align: top; border-radius: 6px; padding: 2px 7px; margin: 2px 4px 2px 0; font: 0.82rem/1.25 var(--font-roboto); border: 1px solid transparent; color: #1f2937; }
+    .ak-chip.ok { background: #f0fdf4; border-color: #bbf7d0; }
+    .ak-chip.bad { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; font-weight: 500; }
+    .ak-chip.extra { background: #ffedd5; border-color: #fdba74; color: #c2410c; font-weight: 500; }
+    .ak-k { font-size: 0.66rem; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; font-weight: 500; }
+    .ak-chip.bad .ak-k, .ak-chip.extra .ak-k { color: inherit; opacity: .8; }
+    .ak-you { font-weight: 400; font-size: 0.72rem; color: #7f1d1d; }
+    .ak-chip.extra .ak-you { color: #7c2d12; }
+    .ak-you .phrase-diagnosis { margin-top: 2px; }
+    .ak-ul { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+    .ak-ul .muted-note { text-decoration: none; display: inline-block; }
+    .ak-fold { padding: 7px 2px; color: #6b7280; font: 0.85rem var(--font-roboto); }
+    .ak-fold button { border: 0; background: none; color: #1d4ed8; cursor: pointer; font: inherit; padding: 0; text-decoration: underline; }
+    .ak-inter { display: flex; flex-wrap: wrap; gap: 12px 10px; padding-top: 8px; }
+    .ak-col { display: flex; flex-direction: column; align-items: flex-start; min-width: 64px; max-width: 170px; }
+    .ak-cw { font-family: var(--font-cinzel); font-weight: 700; border-bottom: 3px solid #9ca3af; padding-bottom: 1px; margin-bottom: 2px; }
+    .ak-cg { color: #6b7280; font: 0.74rem var(--font-roboto); margin-bottom: 2px; }
+    .ak-col .ak-chip { margin: 1px 0; }
+    .ak-inter.only-wrong .ak-col.all-ok .ak-cw, .ak-inter.only-wrong .ak-col.all-ok .ak-cg { opacity: .45; }
+    @container (max-width: 560px) {
+      .ak-row { grid-template-columns: 1fr 26px; gap: 4px 8px; }
+      .ak-g { grid-column: 1; }
+      .ak-t { grid-column: 1 / 3; }
+      .ak-mark { grid-column: 2; grid-row: 1; }
+      .ak-only { margin-left: 0; }
+    }
   </style>
 </head>
 <body>
@@ -2682,16 +2744,19 @@
     <div class="modal-card modal-wide">
       <h3>Session Report</h3>
       <p class="modal-subtitle" id="report-subtitle">…</p>
-      <div class="report-preview" id="report-preview"></div>
+      <div class="report-sheet" id="report-preview"></div>
       <div class="modal-action-btns" style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        <button class="btn-action btn-secondary" id="report-copy-btn" style="flex:1;">Copy</button>
-        <button class="btn-action btn-secondary" id="report-json-btn" style="flex:1;">Download JSON</button>
-        <button class="btn-action btn-secondary" id="report-csv-btn" style="flex:1;">Download CSV</button>
+        <button class="btn-action" id="report-print-btn" style="flex:1;">Print / Save as PDF</button>
+        <button class="btn-action btn-secondary" id="report-copy-btn" style="flex:1;">Copy as text</button>
         <button class="btn-action btn-secondary" id="report-close-btn" style="flex:1;">Close</button>
       </div>
-      <p class="modal-subtitle" id="report-format-note" style="margin: 0.75rem 0 0; font-size: 0.8rem;">
-        Showing the JSON form. CSV contains one row per marked item.
+      <p class="modal-subtitle" id="report-format-note" style="margin: 0.75rem 0 0.4rem; font-size: 0.8rem;">
+        Print or save as PDF to keep a copy, or copy it as text to paste into an email. Only send the data file if your teacher asks for it: it is for your teacher's viewer, not for reading.
       </p>
+      <div class="modal-action-btns" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button class="btn-action btn-secondary" id="report-json-btn" style="flex:1; font-size: 0.8rem;">Download data file for my teacher</button>
+        <button class="btn-action btn-secondary" id="report-csv-btn" style="flex:1; font-size: 0.8rem;">Download spreadsheet (CSV)</button>
+      </div>
     </div>
   </div>
 
@@ -2990,7 +3055,7 @@
        ==================================================================== */
     const PHRASE_TYPES = [
       { id: 'prep',    label: 'Prepositional phrase', trigger: 'preposition + its object' },
-      { id: 'appos',   label: 'Apposition',           trigger: 'a noun renamed by a noun in the same case' },
+      { id: 'appos',   label: 'Apposition',           trigger: 'a noun that renames another noun, or a verb\'s subject' },
       { id: 'abl-abs', label: 'Ablative absolute',    trigger: 'ablative + participle, or two ablatives' }
     ];
     const PHRASE_BY_ID = Object.fromEntries(PHRASE_TYPES.map(t => [t.id, t]));
@@ -3305,9 +3370,10 @@
       phrase: {
         title: "Phrase Tool",
         functions: [
-          { name: "Link, underline, name", desc: "Click the two words at the heart of the phrase \u2014 the preposition and its object, a noun and the noun that renames it, an ablative and its participle. Then underline the whole phrase, and say what kind it is." },
+          { name: "Link, underline, name", desc: "Click the two words at the heart of the phrase \u2014 the preposition and its object, a noun and the word it renames, an ablative and its participle. Then underline the whole phrase, and say what kind it is." },
           { name: "The underline is suggested", desc: "After the link, the words already joined to it by your own adjective and possessor links are underlined for you. Press Enter or click \u201cThese words\u201d to keep them, or click the first and last word yourself." },
           { name: "Three kinds", desc: "Prepositional phrase, apposition, ablative absolute. For an ablative absolute, mark the participle first and the link will be an adjective link; two nouns make an apposition link." },
+          { name: "Apposition", desc: "Click the renaming noun, then the noun it renames (or the verb, when it renames the verb\u2019s subject). Underline only the renaming words: in <em>Aeneadum genetr\u012bx, \u2026 alma Venus</em>, the underline is <em>Aeneadum genetr\u012bx</em>, and the link runs to <em>Venus</em>." },
           { name: "Several objects", desc: "A preposition can govern more than one object, as in <em>per viās et pontēs</em>. To add a link to another object, simply click the preposition, then the other object. The underline will expand to take in every object. You can keep it or choose your own." },
           { name: "To change one", desc: "Tap under a word of the underline. Under the preposition: the whole phrase goes, with every link from it. Under an object: that link goes and the underline stays. Under the first or last word, if it is not an object: the underline gets shorter. Under any other word: that word is left out. Tap the dotted gap to put it back. When no links are left, a tap under any word removes the phrase. Point at the underline to see what a tap will do." },
           { name: "Its code", desc: "Every phrase carries a short code under its line \u2014 prep, appos, abl abs \u2014 spelled out in full when you point at a word inside it." }
@@ -4049,8 +4115,16 @@
             return;
           }
         }
+        /* G6: an apposition's link runs from the appositive to the word it renames, and
+           only the appositive has to lie inside the underline. A phrase that arrives with
+           `to` inside the range and `from` outside is turned the right way round. */
+        if (ph.type === 'appos') {
+          const inR = i => i >= ph.start && i <= ph.end;
+          if (inR(ph.to) && !inR(ph.from)) ph = Object.assign({}, ph, { from: ph.to, to: ph.from });
+        }
         if (phrases.some(x => samePair(x, ph))) return;
-        const start = Math.min(ph.start, ph.from, ph.to), end = Math.max(ph.end, ph.from, ph.to);
+        const start = ph.type === 'appos' ? Math.min(ph.start, ph.from) : Math.min(ph.start, ph.from, ph.to);
+        const end = ph.type === 'appos' ? Math.max(ph.end, ph.from) : Math.max(ph.end, ph.from, ph.to);
         const made = Object.assign({}, ph, { start, end, label: phraseLabel(ph.type) });
         if ('skip' in ph) {
           const raw = Array.isArray(ph.skip) ? ph.skip : [];
@@ -4548,7 +4622,7 @@
         stepText = clauseStartIndex === null ? 'Step 1: Select the first word of the clause' : 'Step 2: Select the last word — then say what kind it is';
       } else if (selectedTool === 'phrase') {
         if (!phraseDraft) stepText = 'Step 1: Select one of the two words at the heart of the phrase';
-        else if (phraseDraft.to === undefined) stepText = 'Step 2: Select the word it is joined to'
+        else if (phraseDraft.to === undefined) stepText = 'Step 2: Select the word it is joined to (for an apposition: the word it renames)'
           + (userPrepPhraseAt(phraseDraft.from) ? ' \u2014 a new object joins the phrase already on this preposition' : '');
         else if (phraseDraft.spanStart === undefined) {
           indicator.innerHTML = 'Step 3: Keep the underlined words, or select the first word of the phrase'
@@ -4651,6 +4725,195 @@
        init() copies it into the footer, and the report stamps it. */
     const APP_VERSION = 'II-β';
 
+    /*<report-core>*/
+    /* ---- Readable session report -----------------------------------------
+       One block, shared word for word by Pictogrammatica (the student's report)
+       and Rubricator (the teacher's viewer), so the two can never disagree about
+       what a report looks like or what a data file contains.
+
+       The data file a student exports is the report object as JSON. It carries
+       REPORT_FORMAT and REPORT_FORMAT_VERSION so a viewer can tell it from any
+       other JSON; reports exported before these markers existed are still read
+       (normaliseReport accepts anything with `totals` and `sentences`). */
+    const REPORT_FORMAT = 'pictogrammatica-session-report';
+    const REPORT_FORMAT_VERSION = 1;
+
+    function rptEsc(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function rptBand(pct) { return pct >= 80 ? 'high' : (pct >= 50 ? 'mid' : 'low'); }
+
+    function rptWhen(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso);
+      try { return d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); }
+      catch (e) { return d.toISOString().slice(0, 16).replace('T', ' '); }
+    }
+
+    /* Accept a parsed JSON value and return a report with every field the views
+       need, or null if it is not a Pictogrammatica report at all. */
+    function normaliseReport(raw) {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+      if (raw.format && raw.format !== REPORT_FORMAT) return null;
+      if (!raw.totals || typeof raw.totals !== 'object' || !Array.isArray(raw.sentences)) return null;
+      const num = v => (typeof v === 'number' && isFinite(v)) ? v : 0;
+      const t = raw.totals;
+      return {
+        format: REPORT_FORMAT,
+        formatVersion: raw.formatVersion || 1,
+        student: raw.student || '(no name given)',
+        generatedAt: raw.generatedAt || null,
+        sessionStartedAt: raw.sessionStartedAt || null,
+        app: raw.app || '',
+        sentenceSet: raw.sentenceSet || 'Built-in',
+        sentenceSetSource: raw.sentenceSetSource || null,
+        totals: {
+          sentencesAttempted: num(t.sentencesAttempted),
+          sentencesCompleted: num(t.sentencesCompleted),
+          pointsEarned: num(t.pointsEarned),
+          pointsPossible: num(t.pointsPossible),
+          averagePercent: num(t.averagePercent),
+          totalChecks: num(t.totalChecks)
+        },
+        sentences: raw.sentences.map(r => ({
+          id: r.id || '', text: r.text || '', category: r.category || '', passage: r.passage || '',
+          difficulty: r.difficulty || '',
+          firstScore: num(r.firstScore), firstPossible: num(r.firstPossible), firstPercent: num(r.firstPercent),
+          bestScore: num(r.bestScore), bestPossible: num(r.bestPossible), bestPercent: num(r.bestPercent),
+          checks: num(r.checks), completed: !!r.completed,
+          missedOnFirstAttempt: Array.isArray(r.missedOnFirstAttempt) ? r.missedOnFirstAttempt.map(String) : [],
+          firstAttemptAt: r.firstAttemptAt || null, lastAttemptAt: r.lastAttemptAt || null
+        })),
+        errorProfile: (Array.isArray(raw.errorProfile) ? raw.errorProfile : []).map(e => ({
+          construction: String(e.construction || ''), correct: num(e.correct), total: num(e.total),
+          percent: num(e.percent)
+        }))
+      };
+    }
+
+    /* The report as it is read on screen and on paper. Every string is escaped. */
+    function reportToHtml(report) {
+      const t = report.totals;
+      const tile = (num, label) => `<div class="rpt-tile"><div class="rpt-num">${rptEsc(num)}</div><div class="rpt-lab">${rptEsc(label)}</div></div>`;
+      let h = `<div class="rpt">`;
+      h += `<div class="rpt-head"><div class="rpt-title">Session report</div>`;
+      h += `<div class="rpt-who">${rptEsc(report.student)}</div>`;
+      h += `<div class="rpt-meta">${rptEsc(report.sentenceSet)}`;
+      if (report.generatedAt) h += ` · ${rptEsc(rptWhen(report.generatedAt))}`;
+      if (report.app) h += ` · Pictogrammatica ${rptEsc(report.app)}`;
+      h += `</div></div>`;
+      h += `<div class="rpt-tiles">`
+        + tile(t.averagePercent + '%', 'average')
+        + tile(t.pointsEarned + ' / ' + t.pointsPossible, 'points')
+        + tile(t.sentencesAttempted, 'attempted')
+        + tile(t.sentencesCompleted, 'completed')
+        + tile(t.totalChecks, 'checks')
+        + `</div>`;
+
+      const prof = report.errorProfile.slice().sort((a, b) => a.percent - b.percent || b.total - a.total);
+      h += `<div class="rpt-sec">Constructions, weakest first</div>`;
+      if (!prof.length) {
+        h += `<p class="rpt-empty">No constructions recorded yet.</p>`;
+      } else {
+        h += `<div class="rpt-prof">`;
+        prof.forEach(e => {
+          h += `<div class="rpt-prow"><span class="rpt-plabel">${rptEsc(e.construction)}</span>`
+            + `<span class="rpt-meter"><span class="rpt-fill rpt-${rptBand(e.percent)}" style="width:${Math.max(0, Math.min(100, e.percent))}%"></span></span>`
+            + `<span class="rpt-pscore">${e.correct}/${e.total} · ${e.percent}%</span></div>`;
+        });
+        h += `</div>`;
+      }
+
+      h += `<div class="rpt-sec">Sentences</div>`;
+      if (!report.sentences.length) {
+        h += `<p class="rpt-empty">No sentences checked yet.</p>`;
+      } else {
+        h += `<div class="rpt-tablewrap"><table class="rpt-table"><thead><tr>`
+          + `<th>Sentence</th><th>First try</th><th>Best</th><th>Checks</th><th></th></tr></thead><tbody>`;
+        report.sentences.forEach(r => {
+          h += `<tr><td class="rpt-sent">${rptEsc(r.text)}`;
+          const sub = [r.category, r.difficulty].filter(Boolean).join(' · ');
+          if (sub) h += `<div class="rpt-sub">${rptEsc(sub)}</div>`;
+          if (r.missedOnFirstAttempt.length) h += `<div class="rpt-missed">Missed first time: ${rptEsc(r.missedOnFirstAttempt.join('; '))}</div>`;
+          h += `</td><td><span class="rpt-pill rpt-${rptBand(r.firstPercent)}">${r.firstPercent}%</span></td>`
+            + `<td><span class="rpt-pill rpt-${rptBand(r.bestPercent)}">${r.bestPercent}%</span></td>`
+            + `<td>${r.checks}</td><td>${r.completed ? 'done' : ''}</td></tr>`;
+        });
+        h += `</tbody></table></div>`;
+      }
+      h += `</div>`;
+      return h;
+    }
+
+    /* The same report as plain text, for pasting into an email. */
+    function reportToText(report) {
+      const t = report.totals;
+      const L = [];
+      L.push('PICTOGRAMMATICA — SESSION REPORT');
+      L.push('Student: ' + report.student);
+      L.push('Sentence set: ' + report.sentenceSet);
+      if (report.generatedAt) L.push('Date: ' + rptWhen(report.generatedAt));
+      if (report.app) L.push('Build: ' + report.app);
+      L.push('');
+      L.push('SUMMARY');
+      L.push(`Average: ${t.averagePercent}%   Points: ${t.pointsEarned} / ${t.pointsPossible}`);
+      L.push(`Sentences attempted: ${t.sentencesAttempted}   Completed: ${t.sentencesCompleted}   Checks: ${t.totalChecks}`);
+      L.push('');
+      L.push('CONSTRUCTIONS, WEAKEST FIRST');
+      const prof = report.errorProfile.slice().sort((a, b) => a.percent - b.percent || b.total - a.total);
+      if (!prof.length) L.push('(none recorded yet)');
+      prof.forEach(e => L.push(`  ${e.construction}: ${e.correct}/${e.total} (${e.percent}%)`));
+      L.push('');
+      L.push('SENTENCES');
+      if (!report.sentences.length) L.push('(none checked yet)');
+      report.sentences.forEach((r, i) => {
+        L.push(`${i + 1}. ${r.text}`);
+        L.push(`   first try ${r.firstPercent}% · best ${r.bestPercent}% · ${r.checks} check${r.checks === 1 ? '' : 's'}${r.completed ? ' · done' : ''}`);
+        if (r.missedOnFirstAttempt.length) L.push('   missed first time: ' + r.missedOnFirstAttempt.join('; '));
+      });
+      return L.join('\n');
+    }
+
+    /* One stylesheet for the report wherever it appears. */
+    const REPORT_CSS = `
+      .rpt { font-family: Georgia, 'Times New Roman', serif; color: #1e293b; text-align: left; }
+      .rpt-head { border-bottom: 2px solid #b45309; padding-bottom: .5rem; margin-bottom: .9rem; }
+      .rpt-title { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #92400e; }
+      .rpt-who { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+      .rpt-meta { font-size: .82rem; color: #64748b; margin-top: .15rem; }
+      .rpt-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: .5rem; margin-bottom: 1rem; }
+      .rpt-tile { border: 1px solid #e2d6bd; background: #fffaf0; border-radius: 8px; padding: .5rem .6rem; }
+      .rpt-num { font-size: 1.25rem; font-weight: 700; }
+      .rpt-lab { font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: #64748b; }
+      .rpt-sec { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #92400e; margin: 1.1rem 0 .4rem; }
+      .rpt-empty { font-size: .85rem; color: #64748b; margin: 0; }
+      .rpt-prow { display: grid; grid-template-columns: minmax(120px, 34%) 1fr auto; gap: .6rem; align-items: center; padding: .2rem 0; font-size: .85rem; }
+      .rpt-meter { position: relative; height: 10px; background: #ece5d3; border-radius: 6px; overflow: hidden; }
+      .rpt-fill { position: absolute; inset: 0 auto 0 0; border-radius: 6px; }
+      .rpt-fill.rpt-low { background: #b91c1c; } .rpt-fill.rpt-mid { background: #d97706; } .rpt-fill.rpt-high { background: #15803d; }
+      .rpt-pscore { font-variant-numeric: tabular-nums; color: #475569; white-space: nowrap; }
+      .rpt-tablewrap { overflow-x: auto; }
+      .rpt-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+      .rpt-table th { text-align: left; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: #64748b; border-bottom: 1px solid #cbd5e1; padding: .3rem .4rem; }
+      .rpt-table td { padding: .4rem; border-bottom: 1px solid #ece5d3; vertical-align: top; }
+      .rpt-sent { min-width: 200px; }
+      .rpt-sub { font-size: .72rem; color: #64748b; }
+      .rpt-missed { font-size: .75rem; color: #9a3412; margin-top: .15rem; }
+      .rpt-pill { display: inline-block; min-width: 3rem; text-align: center; padding: .05rem .4rem; border-radius: 999px; font-weight: 700; font-size: .78rem; color: #fff; }
+      .rpt-pill.rpt-low { background: #b91c1c; } .rpt-pill.rpt-mid { background: #b45309; } .rpt-pill.rpt-high { background: #15803d; }
+      @media print {
+        .rpt-fill, .rpt-meter, .rpt-pill, .rpt-tile { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .rpt-tablewrap { overflow: visible; }
+        .rpt-table tr { break-inside: avoid; }
+      }`;
+    /*</report-core>*/
+
+    try { const st = document.createElement('style'); st.id = 'report-css'; st.textContent = REPORT_CSS; (document.head || document.documentElement).appendChild(st); } catch (e) { /* a stub DOM in a test harness has no head */ }
+
     function sentenceByKey(key) {
       return sentences.find((s, i) => sentenceKey(i) === key) || null;
     }
@@ -4691,6 +4954,8 @@
       }).sort((a, b) => a.percent - b.percent || b.total - a.total);
 
       return {
+        format: REPORT_FORMAT,
+        formatVersion: REPORT_FORMAT_VERSION,
         student: studentName || '(no name given)',
         generatedAt: new Date().toISOString(),
         sessionStartedAt,
@@ -4766,7 +5031,7 @@
 
     function openReportModal() {
       const report = buildReport();
-      const json = JSON.stringify(report, null, 2);
+      const json = JSON.stringify(report, null, 2);   // the data file; students never read it
 
       const subtitle = document.getElementById('report-subtitle');
       if (subtitle) {
@@ -4774,34 +5039,35 @@
           `${report.totals.averagePercent}% average, ${report.totals.totalChecks} check(s).`;
       }
       const preview = document.getElementById('report-preview');
-      if (preview) preview.textContent = json;
+      if (preview) preview.innerHTML = reportToHtml(report);
 
       const modal = document.getElementById('report-modal');
       if (modal) modal.classList.remove('hidden');
 
       const copyBtn = document.getElementById('report-copy-btn');
+      const printBtn = document.getElementById('report-print-btn');
       const jsonBtn = document.getElementById('report-json-btn');
       const csvBtn = document.getElementById('report-csv-btn');
 
       if (copyBtn) copyBtn.onclick = () => {
-        const text = preview ? preview.textContent : json;
+        const text = reportToText(report);
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(text).then(() => {
             copyBtn.textContent = 'Copied';
-            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1600);
+            setTimeout(() => { copyBtn.textContent = 'Copy as text'; }, 1600);
           }).catch(() => selectPreviewForManualCopy());
         } else {
           selectPreviewForManualCopy();
         }
       };
-      if (jsonBtn) jsonBtn.onclick = () => downloadText(reportFilename('json'), json, 'application/json');
-      if (csvBtn) csvBtn.onclick = () => {
-        const csv = reportToCSV(report);
-        if (preview) preview.textContent = csv;
-        const note = document.getElementById('report-format-note');
-        if (note) note.textContent = 'Showing the CSV form. Copy now copies the CSV.';
-        downloadText(reportFilename('csv'), csv, 'text/csv');
+      if (printBtn) printBtn.onclick = () => {
+        document.body.classList.add('printing-report');
+        const done = () => { document.body.classList.remove('printing-report'); window.removeEventListener('afterprint', done); };
+        window.addEventListener('afterprint', done);
+        try { window.print(); } catch (e) { done(); }
       };
+      if (jsonBtn) jsonBtn.onclick = () => downloadText(reportFilename('picto.json'), json, 'application/json');
+      if (csvBtn) csvBtn.onclick = () => downloadText(reportFilename('csv'), reportToCSV(report), 'text/csv');
     }
 
     function selectPreviewForManualCopy() {
@@ -5183,9 +5449,16 @@
 
     function openProfileModal() {
       renderProfileModal();
-      document.getElementById('profile-modal').classList.remove('hidden');
+      const profileOverlay = document.getElementById('profile-modal');
+      profileOverlay.classList.remove('hidden');
+      /* The Close button sits at the foot of a scrolling card, and focusing it
+         used to scroll the card to the bottom. Keep focus (for the keyboard) but
+         say not to scroll, then start at the top: scores and average come first. */
       const closeBtn = document.getElementById('profile-modal-close');
-      if (closeBtn) closeBtn.focus();
+      if (closeBtn) closeBtn.focus({ preventScroll: true });
+      const profileCard = profileOverlay.querySelector('.profile-modal-card');
+      if (profileCard) profileCard.scrollTop = 0;
+      profileOverlay.scrollTop = 0;
     }
 
     function closeProfileModal() {
@@ -6537,6 +6810,33 @@
           || isTruthyFlag(word.askMood) || isTruthyFlag(word.subjInVerb);
     }
 
+    /* Apply the verb window's answers and close it the moment the last required
+       choice is in. Which choices are required comes from the word's own flags:
+       tense (unless the pack switched it off), voice, mood, and the subject pronoun
+       for a verb that carries its subject in its ending. Returns true if it closed. */
+    function maybeFinishVerbModal(word) {
+      if (activeVerbWordIndex === null || !word) return false;
+      const askTense = asksTense(word);
+      const askVoice = isTruthyFlag(word.askVoice);
+      const askMood = isTruthyFlag(word.askMood);
+      const askSubj = isTruthyFlag(word.subjInVerb);
+      if (askTense && !tempSelectedTense) return false;
+      if (askVoice && !tempSelectedVoice) return false;
+      if (askMood && !tempSelectedMood) return false;
+      if (askSubj && !tempSelectedPronoun) return false;
+
+      pushState();
+      userWordState[activeVerbWordIndex].case = 'verb';
+      userWordState[activeVerbWordIndex].tense = askTense ? tempSelectedTense : null;
+      userWordState[activeVerbWordIndex].voice = askVoice ? tempSelectedVoice : null;
+      userWordState[activeVerbWordIndex].mood = askMood ? tempSelectedMood : null;
+      userWordState[activeVerbWordIndex].subjInVerb = askSubj;
+      userWordState[activeVerbWordIndex].subjPronoun = askSubj ? tempSelectedPronoun : null;
+      document.getElementById('tense-modal').classList.add('hidden');
+      renderSentence();
+      return true;
+    }
+
     function updateVerbModalUI(word) {
       const tenseSec = document.getElementById('modal-tense-section');
       const voiceSec = document.getElementById('modal-voice-section');
@@ -6561,10 +6861,10 @@
       if (askSubj) subjSec.classList.remove('hidden');
       else subjSec.classList.add('hidden');
 
-      /* With tense off, there is no single click that can stand for the whole
-         answer, so the Confirm button is the only way out. */
-      if (!askTense || askVoice || askMood || askSubj) confirmBtn.classList.remove('hidden');
-      else confirmBtn.classList.add('hidden');
+      /* The window closes by itself on the last required choice (see
+         maybeFinishVerbModal), so Confirm is never needed. It stays in the
+         markup, hidden, only so older checks that look for it still find it. */
+      confirmBtn.classList.add('hidden');
 
       document.querySelectorAll('#modal-tense-grid .tense-btn').forEach(btn => {
         btn.classList.toggle('selected', btn.dataset.tense === tempSelectedTense);
@@ -6777,7 +7077,17 @@
           phraseDraft.suggest = derivePhraseSpan(userLinks, P.from, o, phraseDraft.heads);
         } else {
           phraseDraft.to = index;
-          phraseDraft.suggest = derivePhraseSpan(userLinks, phraseDraft.from, index);
+          /* G6: a word painted as a verb cannot be the appositive, so the phrase can only
+             be an apposition renaming the verb's subject: suggest the other word's own
+             agreement group. */
+          const isVerbWord = i => !!(userWordState[i] && userWordState[i].case === 'verb');
+          const vA = isVerbWord(phraseDraft.from), vB = isVerbWord(index);
+          if (vA !== vB) {
+            const other = vA ? index : phraseDraft.from;
+            phraseDraft.suggest = derivePhraseSpan(userLinks, other, other);
+          } else {
+            phraseDraft.suggest = derivePhraseSpan(userLinks, phraseDraft.from, index);
+          }
         }
         wordBox.classList.add('selected-source');
         for (let i = phraseDraft.suggest.start; i <= phraseDraft.suggest.end; i++) {
@@ -6805,9 +7115,10 @@
       if (!phraseDraft || phraseDraft.to === undefined) return;
       /* A second object joins the phrase that is there: no naming pop-up. */
       if (phraseDraft.existing && !phraseDraft.redraw) { finishExtension(start, end); return; }
-      const heads = phraseDraft.heads || [];
-      phraseDraft.start = Math.min(start, phraseDraft.from, phraseDraft.to, ...heads);
-      phraseDraft.end = Math.max(end, phraseDraft.from, phraseDraft.to, ...heads);
+      /* G6: the span is shown as drawn. Which words it must reach depends on the kind of
+         phrase, so any stretching happens in commitPhrase, once the kind is chosen. */
+      phraseDraft.start = start;
+      phraseDraft.end = end;
       phraseDraft.skip = new Set();      // no chip starts struck through
       const modal = document.getElementById('phrase-modal');
       const list = document.getElementById('phrase-modal-list');
@@ -6879,6 +7190,28 @@
       const existing = phraseDraft.existing || null;
       /* The preposition goes first, so a second object can find it again. */
       if (typeId === 'prep' && !existing) { const o = orientPrep(from, to); from = o.prep; to = o.obj; }
+      /* G6. An apposition's underline holds only the appositive: if exactly one centre word
+         is inside the span it is `from` and the other is `to`; both inside keeps the click
+         order (the old shape); neither inside stretches the span to the first-clicked word,
+         which becomes `from` (unless exactly one is painted a verb: the verb is renamed,
+         never the appositive). Every other kind holds both centres and every object head,
+         and says so when it had to stretch. */
+      let stretchNote = '';
+      if (typeId === 'appos') {
+        const inR = i => i >= start && i <= end;
+        const fIn = inR(from), tIn = inR(to);
+        if (tIn && !fIn) { const t = from; from = to; to = t; }
+        else if (!fIn && !tIn) {
+          const isV = i => !!(userWordState[i] && userWordState[i].case === 'verb');
+          if (isV(from) && !isV(to)) { const t = from; from = to; to = t; }
+          start = Math.min(start, from); end = Math.max(end, from);
+        }
+      } else {
+        const need = [from, to].concat(phraseDraft.heads || []);
+        const reached = Array.from(new Set(need.filter(i => i < start || i > end))).sort((a, b) => a - b);
+        start = Math.min(start, ...need); end = Math.max(end, ...need);
+        if (reached.length) stretchNote = `The underline was stretched to reach ${joinWordList(reached)}: a phrase holds its own centre.`;
+      }
       pushState();
       const linkType = phraseLinkType(typeId, from, to);
       if (!userLinks.some(l => l.type === linkType && samePair(l, { from, to }))) {
@@ -6894,6 +7227,7 @@
       closePhraseModal();
       clearSelections();
       renderSentence();              // a new phrase gathers its words onto one line
+      if (stretchNote) setPhraseStatus(stretchNote);
     }
 
     function closePhraseModal() {
@@ -7023,20 +7357,8 @@
           const askMood = isTruthyFlag(word.askMood);
           const askSubj = isTruthyFlag(word.subjInVerb);
 
-          // Tense alone still applies on the click. Anything else to answer and we wait.
-          if (asksTense(word) && !askVoice && !askMood && !askSubj) {
-            pushState();
-            userWordState[activeVerbWordIndex].case = 'verb';
-            userWordState[activeVerbWordIndex].tense = tempSelectedTense;
-            userWordState[activeVerbWordIndex].voice = null;
-            userWordState[activeVerbWordIndex].mood = null;
-            userWordState[activeVerbWordIndex].subjInVerb = false;
-            userWordState[activeVerbWordIndex].subjPronoun = null;
-            document.getElementById('tense-modal').classList.add('hidden');
-            renderSentence();
-          } else {
-            updateVerbModalUI(word);
-          }
+          updateVerbModalUI(word);
+          maybeFinishVerbModal(word);
         });
       });
 
@@ -7045,6 +7367,7 @@
           if (activeVerbWordIndex === null) return;
           tempSelectedVoice = btn.dataset.voice;
           updateVerbModalUI(currentSentence.words[activeVerbWordIndex]);
+          maybeFinishVerbModal(currentSentence.words[activeVerbWordIndex]);
         });
       });
 
@@ -7053,6 +7376,7 @@
           if (activeVerbWordIndex === null) return;
           tempSelectedMood = btn.dataset.mood;
           updateVerbModalUI(currentSentence.words[activeVerbWordIndex]);
+          maybeFinishVerbModal(currentSentence.words[activeVerbWordIndex]);
         });
       });
 
@@ -7061,45 +7385,15 @@
           if (activeVerbWordIndex === null) return;
           tempSelectedPronoun = btn.dataset.pronoun;
           updateVerbModalUI(currentSentence.words[activeVerbWordIndex]);
+          maybeFinishVerbModal(currentSentence.words[activeVerbWordIndex]);
         });
       });
 
+      /* Kept for anything that still presses it (the keyboard path, older checks):
+         it finishes the window if every required choice is made. */
       document.getElementById('modal-confirm-verb-btn').addEventListener('click', () => {
         if (activeVerbWordIndex === null) return;
-        const word = currentSentence.words[activeVerbWordIndex];
-
-        const askVoice = isTruthyFlag(word.askVoice);
-        const askMood = isTruthyFlag(word.askMood);
-        const askSubj = isTruthyFlag(word.subjInVerb);
-
-        const askTense = asksTense(word);
-        if (askTense && !tempSelectedTense) {
-          alert('Please select a tense for the verb.');
-          return;
-        }
-        if (askVoice && !tempSelectedVoice) {
-          alert('Please select a voice (Active or Passive) for the verb.');
-          return;
-        }
-        if (askMood && !tempSelectedMood) {
-          alert('Please select a mood (Indicative, Subjunctive or Imperative) for the verb.');
-          return;
-        }
-        if (askSubj && !tempSelectedPronoun) {
-          alert('This verb carries its subject in its ending. Please say who is doing it.');
-          return;
-        }
-
-        pushState();
-        userWordState[activeVerbWordIndex].case = 'verb';
-        userWordState[activeVerbWordIndex].tense = askTense ? tempSelectedTense : null;
-        userWordState[activeVerbWordIndex].voice = askVoice ? tempSelectedVoice : null;
-        userWordState[activeVerbWordIndex].mood = askMood ? tempSelectedMood : null;
-        userWordState[activeVerbWordIndex].subjInVerb = askSubj;
-        userWordState[activeVerbWordIndex].subjPronoun = askSubj ? tempSelectedPronoun : null;
-
-        document.getElementById('tense-modal').classList.add('hidden');
-        renderSentence();
+        maybeFinishVerbModal(currentSentence.words[activeVerbWordIndex]);
       });
 
       document.getElementById('modal-cancel-btn').addEventListener('click', () => document.getElementById('tense-modal').classList.add('hidden'));
@@ -8338,6 +8632,7 @@
           const verbCorrect = uState.case === 'verb';
           if (verbCorrect) pointsEarned += 1; else flaggedWordIndices.add(idx);
           resultsRows.push({
+            k: { w: idx, part: 'role' },
             element: `${displayWordText} (Verb Role)`,
             translation: getDisplayText(word.translation) || '—',
             expected: 'VERB',
@@ -8351,7 +8646,8 @@
             const tenseCorrect = uState.case === 'verb' && uState.tense === word.tense;
             if (tenseCorrect) pointsEarned += 1; else flaggedWordIndices.add(idx);
             resultsRows.push({
-              element: `${displayWordText} (Tense)`,
+              k: { w: idx, part: 'tense' },
+            element: `${displayWordText} (Tense)`,
               translation: getDisplayText(word.translation) || '—',
               expected: word.tense,
               given: (uState.case === 'verb' && uState.tense) ? uState.tense : 'Unmarked / N/A',
@@ -8368,7 +8664,8 @@
             const voiceCorrect = uState.case === 'verb' && uState.voice === word.voice;
             if (voiceCorrect) pointsEarned += 1; else flaggedWordIndices.add(idx);
             resultsRows.push({
-              element: `${displayWordText} (Voice)`,
+              k: { w: idx, part: 'voice' },
+            element: `${displayWordText} (Voice)`,
               translation: getDisplayText(word.translation) || '—',
               expected: word.voice,
               given: (uState.case === 'verb' && uState.voice) ? uState.voice : 'Unmarked / N/A',
@@ -8382,7 +8679,8 @@
             const moodCorrect = uState.case === 'verb' && uState.mood === word.mood;
             if (moodCorrect) pointsEarned += 1; else flaggedWordIndices.add(idx);
             resultsRows.push({
-              element: `${displayWordText} (Mood)`,
+              k: { w: idx, part: 'mood' },
+            element: `${displayWordText} (Mood)`,
               translation: getDisplayText(word.translation) || '—',
               expected: word.mood,
               given: (uState.case === 'verb' && uState.mood) ? uState.mood : 'Unmarked / N/A',
@@ -8397,7 +8695,8 @@
             const subjCorrect = uState.subjInVerb && uState.subjPronoun === wantPronoun;
             if (subjCorrect) pointsEarned += 1; else flaggedWordIndices.add(idx);
             resultsRows.push({
-              element: `${displayWordText} (Implied Subject)`,
+              k: { w: idx, part: 'subj' },
+            element: `${displayWordText} (Implied Subject)`,
               translation: getDisplayText(word.translation) || '—',
               expected: getDisplayText(wantPronoun),
               given: (uState.subjInVerb && uState.subjPronoun) ? getDisplayText(uState.subjPronoun) : 'None',
@@ -8416,6 +8715,7 @@
             spuriousCaseCount++;
             flaggedWordIndices.add(idx);
             resultsRows.push({
+              k: { w: idx, part: 'nocase' },
               element: displayWordText,
               translation: getDisplayText(word.translation) || '—',
               expected: 'Nothing — this word carries no case',
@@ -8457,6 +8757,7 @@
           if (wordCorrect) pointsEarned += 1; else flaggedWordIndices.add(idx);
 
           resultsRows.push({
+            k: { w: idx, part: 'case' },
             element: displayWordText,
             translation: getDisplayText(word.translation) || '—',
             expected: expectedRole,
@@ -8472,6 +8773,7 @@
           const degreeOk = uState.degree === word.degree;
           if (degreeOk) pointsEarned += 1; else flaggedWordIndices.add(idx);
           resultsRows.push({
+            k: { w: idx, part: 'degree' },
             element: `${displayWordText} (Degree)`,
             translation: getDisplayText(word.translation) || '—',
             expected: word.degree,
@@ -8485,6 +8787,7 @@
           spuriousVerbalCount++;
           flaggedWordIndices.add(idx);
           resultsRows.push({
+            k: { w: idx, part: 'degree' },
             element: `${displayWordText} (Degree)`,
             translation: getDisplayText(word.translation) || '—',
             expected: 'No degree',
@@ -8509,6 +8812,7 @@
           const formCorrect = !!givenVerbal && givenVerbal.form === expectedVerbal.form;
           if (formCorrect) pointsEarned += 1; else flaggedWordIndices.add(idx);
           resultsRows.push({
+            k: { w: idx, part: 'verbal' },
             element: `${displayWordText} (Verbal Form)`,
             translation: getDisplayText(word.translation) || '—',
             expected: verbalLabel(expectedVerbal),
@@ -8522,7 +8826,8 @@
             const tenseOk = formCorrect && givenVerbal.tense === expectedVerbal.tense;
             if (tenseOk) pointsEarned += 1; else flaggedWordIndices.add(idx);
             resultsRows.push({
-              element: `${displayWordText} (Participle Tense)`,
+              k: { w: idx, part: 'ptense' },
+            element: `${displayWordText} (Participle Tense)`,
               translation: getDisplayText(word.translation) || '—',
               expected: expectedVerbal.tense,
               given: (givenVerbal && givenVerbal.tense) ? givenVerbal.tense : 'Unmarked / N/A',
@@ -8536,7 +8841,8 @@
             const voiceOk = formCorrect && givenVerbal.voice === expectedVerbal.voice;
             if (voiceOk) pointsEarned += 1; else flaggedWordIndices.add(idx);
             resultsRows.push({
-              element: `${displayWordText} (Participle Voice)`,
+              k: { w: idx, part: 'pvoice' },
+            element: `${displayWordText} (Participle Voice)`,
               translation: getDisplayText(word.translation) || '—',
               expected: expectedVerbal.voice,
               given: (givenVerbal && givenVerbal.voice) ? givenVerbal.voice : 'Unmarked / N/A',
@@ -8551,6 +8857,7 @@
           spuriousVerbalCount++;
           flaggedWordIndices.add(idx);
           resultsRows.push({
+            k: { w: idx, part: 'verbal' },
             element: `${displayWordText} (Verbal Form)`,
             translation: getDisplayText(word.translation) || '—',
             expected: 'No verbal form',
@@ -8603,8 +8910,18 @@
           pointsEarned += 1;
         }
 
-        const fromWord = getDisplayText(currentSentence.words[link.from].text);
-        const toWord = getDisplayText(currentSentence.words[link.to].text);
+        /* G6: an apposition to a verb renames its implied subject; say which, in brackets. */
+        const withSubj = (i) => {
+          const w = currentSentence.words[i];
+          const t = getDisplayText(w.text);
+          if (link.type === 'appos' && w.case === 'verb' && isTruthyFlag(w.subjInVerb)) {
+            const p = expectedPronoun(w);
+            if (p) return `${t} (${p})`;
+          }
+          return t;
+        };
+        const fromWord = withSubj(link.from);
+        const toWord = withSubj(link.to);
         /* Was a ternary, which called every non-adjective link a Possessor Link.
            With the preposition link arriving in II that would have quietly filed
            every prepositional phrase under the wrong construction in the error
@@ -8614,6 +8931,7 @@
         /* The link's own translation where the author gave one — "into the city"
            says what in + urbem does; the two glosses side by side do not. */
         resultsRows.push({
+          k: { link },
           element: `${fromWord} ↔ ${toWord}`,
           translation: link.translation
             ? getDisplayText(link.translation)
@@ -8640,6 +8958,7 @@
         const kp = ul.type === 'prep' ? keyPrepPhrases.find(p => ul.from === p.from || ul.to === p.from) : null;
 
         resultsRows.push({
+          k: { xlink: ul },
           element: `${fromWord} ↔ ${toWord}`,
           translation: '—',
           expected: 'No link here',
@@ -8716,6 +9035,7 @@
           given += `<div class="phrase-diagnosis">${notes.join('<br>')}</div>`;
         }
         resultsRows.push({
+          k: { phrase: ph, part: 'ul' },
           element: `⎣${phraseWords(ph, keyHeads)}⎦ (Underline)`,
           translation,
           expected,
@@ -8724,6 +9044,7 @@
           construction: label
         });
         resultsRows.push({
+          k: { phrase: ph, part: 'kind' },
           element: `⎣${phraseWords(ph, keyHeads)}⎦ (Kind)`,
           translation,
           expected: label,
@@ -8737,6 +9058,7 @@
         if (matchedUserPhrases.has(i)) return;
         extraCount++;
         resultsRows.push({
+          k: { xphrase: up },
           element: `⎣${phraseWords(up)}⎦`,
           translation: '—',
           expected: 'No phrase here',
@@ -8828,6 +9150,7 @@
           given = `${escapeForHtml(clauseWhole(uc))}<div class="phrase-diagnosis">${notes.join('<br>')}</div>`;
         }
         const bracketRow = {
+          k: { clause, part: 'br' },
           element: `${clauseWords(clause)} (Bracket)`,
           elementPlain: `${clauseSpanPlain(clause)} (Bracket)`,
           translation: clauseTrans,
@@ -8839,6 +9162,7 @@
         resultsRows.push(bracketRow);
         if (!uc) unmatchedKeyClauses.push({ row: bracketRow, clause, keyIncl });
         resultsRows.push({
+          k: { clause, part: 'kind' },
           element: `${clauseWords(clause)} (Kind)`,
           elementPlain: `${clauseSpanPlain(clause)} (Kind)`,
           translation: clauseTrans,
@@ -8877,6 +9201,7 @@
         extraCount++;
 
         resultsRows.push({
+          k: { xclause: uc },
           element: clauseWords(uc),
           translation: '—',
           expected: 'No bracket here',
@@ -8984,82 +9309,215 @@
       renderSentence(); // paints the "not yet right" flags onto the words
     }
 
+    /* ==================================================================
+       The answer key, four ways (31 October, layout preview only).
+
+         table  — one row per question, as Pictogrammatica II has it.
+         rows   — one row per word, every question about it a chip on that
+                  row; phrases and clauses one row each (kind, core, breadth).
+         inter  — the sentence in reading order, the chips under each word.
+         both   — interlinear while "Only what's wrong" is on, rows when off.
+
+       "Only what's wrong" starts on in flags-only mode and off when the
+       full key is the setting. Before Reveal, flags-only never shows the
+       key's answer: a wrong chip says what was asked and what the student
+       marked, and "not yet".
+
+       Every chip comes from a results row (`row.k` says which word or
+       structure it belongs to), so the score and the four views can never
+       disagree.
+       ================================================================== */
+    const KEY_VIEWS = [['table', 'Table'], ['rows', 'Rows'], ['inter', 'Interlinear'], ['both', 'Both']];
+    let keyView = 'rows';
+    try { const v = localStorage.getItem('picto.keyView'); if (KEY_VIEWS.some(k => k[0] === v)) keyView = v; } catch (e) {}
+    let keyOnlyWrong = null;     // null: follow the mode's default
+    let keyUnfolded = { words: false, structs: false };   // "Show correct …" pressed, per section
+    let keyRenderedFor = null;   // the result the toggles above belong to
+
+    const KEY_PART_NAME = { role: '', tense: 'tense', voice: 'voice', mood: 'mood', subj: 'subject', case: 'case',
+      nocase: 'case', degree: 'degree', verbal: 'verbal', ptense: 'tense', pvoice: 'voice' };
+    const KEY_CASE_WORD = { NOM: 'Nominative', GEN: 'Genitive', DAT: 'Dative', ACC: 'Accusative', ABL: 'Ablative',
+      VOC: 'Vocative', LOC: 'Locative', INF: 'Infinitive', VERB: 'Verb' };
+    const KEY_LINK_VERB = { adj: 'agrees with', poss: 'belongs to', appos: 'in apposition to', prep: 'governs' };
+    const keyCaseText = s => String(s).replace(/^(NOM|GEN|DAT|ACC|ABL|VOC|LOC|INF|VERB)\b/, m => KEY_CASE_WORD[m]);
+    const keyNoDiagnosis = s => String(s).replace(/<div class="phrase-diagnosis">[\s\S]*?<\/div>/g, '');
+    const keyWord = i => currentSentence && currentSentence.words[i] ? getDisplayText(currentSentence.words[i].text).replace(/[,.;:!?·]+$/, '') : `[${i}]`;
+
+    /* Words and structures, each with its chips: { row, k, label, you, extra }. */
+    function buildKeyModel(rows) {
+      const s = currentSentence;
+      const words = s.words.map((w, i) => ({ i, text: getDisplayText(w.text), gloss: getDisplayText(w.translation) || '', kase: w.case, chips: [] }));
+      const structs = [];
+      const byObj = new Map();
+      const structFor = (obj, kind, gloss) => {
+        if (!byObj.has(obj)) { const e = { kind, gloss, chips: [] }; byObj.set(obj, e); structs.push(e); }
+        return byObj.get(obj);
+      };
+      /* Phrases and clauses in the key's order, so the list reads like the sentence. */
+      (s.phrases || []).forEach(ph => structFor(ph, 'Phrase', ''));
+      (s.clauses || []).forEach(c => structFor(c, 'Clause', ''));
+      /* A link at the centre of a phrase is that phrase's core, shown in its row. */
+      /* Not a possessor link: an apposition pair can carry one as well (the genitive inside it). */
+      const coreOf = l => (s.phrases || []).find(ph => ph.type === 'prep'
+        ? (l.type === 'prep' && l.from === ph.from)
+        : (l.type !== 'poss' && l.type !== 'prep' && samePair(ph, l)));
+
+      rows.forEach(row => {
+        const k = row.k || {};
+        if (k.w !== undefined) {
+          let label = row.expected, you = row.given;
+          if (k.part === 'case' || k.part === 'nocase' || k.part === 'role') { label = keyCaseText(label); you = keyCaseText(you); }
+          if (k.part === 'nocase') label = 'no case';
+          if (k.part === 'role') label = 'Verb';
+          words[k.w].chips.push({ row, k: KEY_PART_NAME[k.part], label, you });
+        } else if (k.link) {
+          const l = k.link, core = coreOf(l);
+          if (core) {
+            const st = structFor(core, 'Phrase', '');
+            st.chips.push({ row, k: 'core', label: `${keyWord(l.from)} → ${keyWord(l.to)}`, you: 'no link' });
+          } else {
+            const home = l.type === 'poss' ? l.to : l.from, other = home === l.from ? l.to : l.from;
+            words[home].chips.push({ row, k: 'link', label: `${KEY_LINK_VERB[l.type] || 'linked to'} ${keyWord(other)}`, you: 'no link' });
+          }
+        } else if (k.xlink) {
+          const l = k.xlink;
+          if (words[l.from]) words[l.from].chips.push({ row, k: 'extra link', label: `${KEY_LINK_VERB[l.type] || 'linked to'} ${keyWord(l.to)}`, you: 'no link belongs here', extra: true });
+        } else if (k.phrase) {
+          const st = structFor(k.phrase, 'Phrase', row.translation);
+          st.gloss = st.gloss || row.translation;
+          if (k.part === 'kind') st.chips.unshift({ row, k: 'kind', label: row.expected, you: keyNoDiagnosis(row.given) });
+          else st.chips.push({ row, k: 'breadth', label: `<span class="ak-ul">${row.expected}</span>`, you: row.given });
+        } else if (k.clause) {
+          const c = k.clause, st = structFor(c, 'Clause', row.translation);
+          st.gloss = st.gloss || row.translation;
+          if (k.part === 'kind') st.chips.unshift({ row, k: 'kind', label: row.expected, you: row.given });
+          else st.chips.push({ row, k: 'breadth', label: `⟦${keyWord(c.start)} … ${keyWord(c.end)}⟧`, you: row.given });
+        } else if (k.xphrase || k.xclause) {
+          structs.push({ kind: k.xphrase ? 'Phrase' : 'Clause', gloss: '', chips: [
+            { row, k: k.xphrase ? 'extra underline' : 'extra bracket', label: `${row.given}: ${row.elementPlain || row.element}`, you: `no ${k.xphrase ? 'phrase' : 'clause'} here`, extra: true }] });
+        }
+      });
+      /* Phrase core first after kind, breadth last: kind · core · breadth. */
+      structs.forEach(st => {
+        const order = { kind: 0, core: 1, breadth: 2 };
+        st.chips.sort((a, b) => (order[a.k] ?? 3) - (order[b.k] ?? 3));
+      });
+      return { words, structs: structs.filter(st => st.chips.length) };
+    }
+
+    function keyChipHTML(c, answers) {
+      const ok = c.row.correct;
+      const cls = ok ? 'ok' : (c.extra ? 'extra' : 'bad');
+      let value, you = '';
+      if (c.extra) { value = c.label; you = c.you; }
+      else if (ok || answers) { value = c.label; if (!ok) you = `you: ${c.you}`; }
+      else { value = 'not yet'; you = `you: ${keyNoDiagnosis(c.you)}`; }
+      return `<span class="ak-chip ${cls}">${c.k ? `<span class="ak-k">${c.k}</span>` : ''}<span class="ak-v">${value}</span>${you ? `<span class="ak-you">${you}</span>` : ''}</span>`;
+    }
+    const keyMark = chips => {
+      const bad = chips.filter(c => !c.row.correct).length;
+      return `<span class="ak-mark ${bad ? 'bad' : 'ok'}">${bad ? '✗' + (bad > 1 ? bad : '') : '✓'}</span>`;
+    };
+    function keyRowHTML(title, gloss, chips, answers, colour) {
+      return `<div class="ak-row"><div class="ak-w" style="border-left-color:${colour}">${title}</div><div class="ak-g">${gloss || ''}</div>
+        <div class="ak-t">${chips.map(c => keyChipHTML(c, answers)).join('')}</div>${keyMark(chips)}</div>`;
+    }
+    /* One line under a section: "Show correct words", or, once shown, "Hide correct words". */
+    const keyFoldHTML = (n, noun, part) => (n || keyUnfolded[part])
+      ? `<div class="ak-fold"><button type="button" data-ak-unfold="${part}">${keyUnfolded[part] ? 'Hide' : 'Show'} correct ${noun}</button></div>` : '';
+    function keyStructNoun(model) {
+      const p = model.structs.some(st => st.kind === 'Phrase'), c = model.structs.some(st => st.kind === 'Clause');
+      return p && c ? 'phrases and clauses' : (c ? 'clauses' : 'phrases');
+    }
+    const keyCaseColour = kase => (CASE_HEX[kase] || (kase === 'verb' ? '#374151' : '#9ca3af'));
+
+    function keyStructsHTML(model, onlyWrong, answers, chipsOnlyWrong) {
+      let folded = 0;
+      const out = model.structs.map(st => {
+        const allOk = st.chips.every(c => c.row.correct);
+        if (onlyWrong && !keyUnfolded.structs && allOk) { folded++; return ''; }
+        const chips = chipsOnlyWrong && !keyUnfolded.structs ? st.chips.filter(c => !c.row.correct) : st.chips;
+        return keyRowHTML(st.kind, st.gloss, chips, answers, '#64748b');
+      }).join('');
+      const fold = onlyWrong ? keyFoldHTML(folded, keyStructNoun(model), 'structs') : '';
+      if (!out) return fold;
+      return `<div class="ak-h">Phrases and clauses</div>${out}${fold}`;
+    }
+
+    function keyRowsViewHTML(model, onlyWrong, answers) {
+      let folded = 0;
+      const rows = model.words.map(w => {
+        if (!w.chips.length) return '';
+        if (onlyWrong && !keyUnfolded.words && w.chips.every(c => c.row.correct)) { folded++; return ''; }
+        return keyRowHTML(w.text, w.gloss, w.chips, answers, keyCaseColour(w.kase));
+      }).join('');
+      const fold = onlyWrong ? keyFoldHTML(folded, 'words', 'words') : '';
+      return (rows ? `<div class="ak-h">Words</div>${rows}` : '') + fold
+        + keyStructsHTML(model, onlyWrong, answers, false);
+    }
+
+    function keyInterViewHTML(model, onlyWrong, answers) {
+      const cols = model.words.map(w => {
+        const allOk = w.chips.every(c => c.row.correct);
+        const chips = onlyWrong ? w.chips.filter(c => !c.row.correct) : w.chips;
+        return `<div class="ak-col${allOk ? ' all-ok' : ''}"><div class="ak-cw" style="border-bottom-color:${keyCaseColour(w.kase)}">${w.text}</div><div class="ak-cg">${w.gloss}</div>${chips.map(c => keyChipHTML(c, answers)).join('')}</div>`;
+      }).join('');
+      return `<div class="ak-inter${onlyWrong ? ' only-wrong' : ''}">${cols}</div>` + keyStructsHTML(model, onlyWrong, answers, onlyWrong);
+    }
+
+    function keyTableHTML(r, onlyWrong) {
+      const rows = onlyWrong ? r.rows.filter(row => !row.correct) : r.rows;
+      if (!rows.length) return '';
+      return `<table class="results-table"><thead><tr><th>Sentence Part / Word</th><th>Translation</th><th>Expected Syntax</th><th>Your Marking</th><th>Status</th></tr></thead><tbody>`
+        + rows.map(row => {
+          const statusClass = row.correct ? 'correct' : (row.extra ? 'extra' : 'incorrect');
+          const statusText = row.correct ? '✓ Correct' : (row.extra ? '✗ Extra' : '✗ Incorrect');
+          return `<tr${row.extra ? ' class="row-extra"' : ''}><td><strong>${row.element}</strong></td><td>${row.translation}</td><td>${row.expected}</td><td>${row.given}</td><td><span class="status-badge ${statusClass}">${statusText}</span></td></tr>`;
+        }).join('') + `</tbody></table>`;
+    }
+
     // Two views of the same result: the full answer key, or flags only so the student
     // still has something to work out on a second pass.
     function renderFeedback(showKey) {
       if (!lastCheckResult) return;
       const r = lastCheckResult;
+      if (keyRenderedFor !== r) { keyRenderedFor = r; keyOnlyWrong = null; keyUnfolded = { words: false, structs: false }; }
       const wrongRows = r.rows.filter(row => !row.correct);
+      const answers = !!showKey;
+      /* Before Reveal, flags-only shows only what is wrong; after it, the switch decides. */
+      const onlyWrong = !answers ? true : (keyOnlyWrong === null ? !revealAnswerKey : keyOnlyWrong);
+      const view = keyView === 'both' ? (onlyWrong ? 'inter' : 'rows') : keyView;
 
       let html = `
         <div class="feedback-summary">Score: ${r.pointsEarned} / ${r.pointsPossible} (${r.percentage}%)</div>
         <div class="attempt-note">${r.attemptNote}${r.extraNote}</div>
+        <div class="ak-bar" role="group" aria-label="Answer key view">
+          <span class="ak-bar-l">Answer key:</span>
+          ${KEY_VIEWS.map(([id, name]) => `<button type="button" class="ak-seg" data-ak-view="${id}" aria-pressed="${keyView === id}">${name}</button>`).join('')}
+          <label class="ak-only"><input type="checkbox" id="ak-only"${onlyWrong ? ' checked' : ''}${answers ? '' : ' disabled'}> Only what's wrong</label>
+        </div>
       `;
 
-      if (showKey) {
-        html += `
-          <table class="results-table">
-            <thead>
-              <tr>
-                <th>Sentence Part / Word</th>
-                <th>Translation</th>
-                <th>Expected Syntax</th>
-                <th>Your Marking</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-        `;
-
-        r.rows.forEach(row => {
-          const statusClass = row.correct ? 'correct' : (row.extra ? 'extra' : 'incorrect');
-          const statusText = row.correct ? '✓ Correct' : (row.extra ? '✗ Extra' : '✗ Incorrect');
-          html += `
-            <tr${row.extra ? ' class="row-extra"' : ''}>
-              <td><strong>${row.element}</strong></td>
-              <td>${row.translation}</td>
-              <td>${row.expected}</td>
-              <td>${row.given}</td>
-              <td>
-                <span class="status-badge ${statusClass}">
-                  ${statusText}
-                </span>
-              </td>
-            </tr>
-          `;
-        });
-
-        html += `</tbody></table>`;
-      } else if (wrongRows.length === 0) {
+      if (wrongRows.length === 0) {
         html += `<div class="retry-hint">Everything you marked is correct.</div>`;
+        if (answers && !onlyWrong) html += view === 'table' ? keyTableHTML(r, false) : (() => {
+          const m = buildKeyModel(r.rows);
+          return view === 'inter' ? keyInterViewHTML(m, false, true) : keyRowsViewHTML(m, false, true);
+        })();
       } else {
-        html += `
-          <div class="retry-hint">${wrongRows.length} item${wrongRows.length === 1 ? ' is' : 's are'} not right yet — they are outlined in the sentence above. Fix what you can, then check again.</div>
-          <table class="results-table">
-            <thead>
-              <tr>
-                <th>Sentence Part / Word</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-        `;
-
-        wrongRows.forEach(row => {
-          html += `
-            <tr${row.extra ? ' class="row-extra"' : ''}>
-              <td><strong>${row.elementPlain || row.element}</strong></td>
-              <td>
-                <span class="status-badge ${row.extra ? 'extra' : 'incorrect'}">
-                  ${row.extra ? '✗ Should not be marked' : '✗ Not yet'}
-                </span>
-              </td>
-            </tr>
-          `;
-        });
-
-        html += `</tbody></table>
-          <button class="btn-reveal-key" id="btn-reveal-key">Reveal the answer key</button>`;
+        if (!answers) {
+          html += `<div class="retry-hint">${wrongRows.length} item${wrongRows.length === 1 ? ' is' : 's are'} not right yet — they are outlined in the sentence above. Fix what you can, then check again.</div>`;
+        }
+        if (view === 'table') {
+          if (answers) html += keyTableHTML(r, onlyWrong);
+          else html += `<table class="results-table"><thead><tr><th>Sentence Part / Word</th><th>Status</th></tr></thead><tbody>`
+            + wrongRows.map(row => `<tr${row.extra ? ' class="row-extra"' : ''}><td><strong>${row.elementPlain || row.element}</strong></td><td><span class="status-badge ${row.extra ? 'extra' : 'incorrect'}">${row.extra ? '✗ Should not be marked' : '✗ Not yet'}</span></td></tr>`).join('')
+            + `</tbody></table>`;
+        } else {
+          const model = buildKeyModel(r.rows);
+          html += `<div class="ak-body">${view === 'inter' ? keyInterViewHTML(model, onlyWrong, answers) : keyRowsViewHTML(model, onlyWrong, answers)}</div>`;
+        }
+        if (!answers) html += `<button class="btn-reveal-key" id="btn-reveal-key">Reveal the answer key</button>`;
       }
 
       feedbackBox.className = `feedback-box show ${r.scoreClass}`;
@@ -9067,6 +9525,14 @@
 
       const revealBtn = document.getElementById('btn-reveal-key');
       if (revealBtn) revealBtn.addEventListener('click', () => renderFeedback(true));
+      feedbackBox.querySelectorAll('[data-ak-view]').forEach(b => b.addEventListener('click', () => {
+        keyView = b.dataset.akView;
+        try { localStorage.setItem('picto.keyView', keyView); } catch (e) {}
+        renderFeedback(showKey);
+      }));
+      const only = document.getElementById('ak-only');
+      if (only) only.addEventListener('change', () => { keyOnlyWrong = only.checked; keyUnfolded = { words: false, structs: false }; renderFeedback(showKey); });
+      feedbackBox.querySelectorAll('[data-ak-unfold]').forEach(b => b.addEventListener('click', () => { const part = b.dataset.akUnfold; keyUnfolded[part] = !keyUnfolded[part]; renderFeedback(showKey); }));
     }
 
     window.addEventListener('DOMContentLoaded', init);
@@ -9160,49 +9626,243 @@ body.lay-phone .sg-pop .sg-leg .sg-keys { margin-left: 0; }
     {
       "id": "jlc8:aeneadum-genetrix-hominum-divumque",
       "text": "Aeneadum genetrīx, hominum dīvumque voluptās, alma Venus, caelī subter lābentia signa quae mare nāvigerum quae terrās frūgiferentīs concelebrās.",
-      "author": "MMB", "category": "", "pack": "JLC VIII", "passage": "",
-      "translation": "Mother of Aeneas' descendants, pleasure of men and of gods, nourishing Venus, yo who beneath the gliding signs of heaven you fill the ship-bearing sea and the fruit-bearing lands.",
+      "author": "MMB",
+      "category": "",
+      "pack": "JLC VIII",
+      "passage": "Lucr. 1.1",
+      "translation": "Mother of Aeneas' descendants, pleasure of men and of gods, nourishing Venus, you who beneath the gliding signs of heaven fill the ship-bearing sea and the fruit-bearing lands.",
       "difficulty": "Centurio",
       "words": [
-        { "text": "Aeneadum", "case": "gen", "translation": "of Aeneas' descendants" },
-        { "text": "genetrīx,", "case": "nom", "translation": "mother" },
-        { "text": "hominum", "case": "gen", "translation": "of the people" },
-        { "text": "dīvumque", "case": "gen", "translation": "of the gods" },
-        { "text": "voluptās,", "case": "nom", "translation": "pleasure, delight" },
-        { "text": "alma", "case": "nom", "translation": "nourishing" },
-        { "text": "Venus,", "case": "nom", "translation": "Venus" },
-        { "text": "caelī", "case": "gen", "translation": "of heaven" },
-        { "text": "subter", "case": "none", "translation": "beneath" },
-        { "text": "lābentia", "case": "acc", "verbal": { "form": "participle", "tense": "Present", "voice": "Active" }, "translation": "gliding" },
-        { "text": "signa", "case": "acc", "translation": "signs" },
-        { "text": "quae", "case": "nom", "translation": "who, which" },
-        { "text": "mare", "case": "acc", "translation": "sea" },
-        { "text": "nāvigerum", "case": "acc", "translation": "ship-bearing" },
-        { "text": "quae", "case": "nom", "translation": "who, which" },
-        { "text": "terrās", "case": "acc", "translation": "lands" },
-        { "text": "frūgiferentīs", "case": "acc", "verbal": { "form": "participle", "tense": "Present", "voice": "Active" }, "translation": "fruit-bearing" },
-        { "text": "concelebrās.", "case": "verb", "tense": "Present", "voice": "Active", "mood": "Indicative", "askTense": true, "askVoice": true, "askMood": false, "person": "2nd", "number": "Singular", "subjInVerb": true, "translation": "you fill" }
+        {
+          "text": "Aeneadum",
+          "case": "gen",
+          "translation": "of Aeneas' descendants"
+        },
+        {
+          "text": "genetrīx,",
+          "case": "voc",
+          "translation": "mother"
+        },
+        {
+          "text": "hominum",
+          "case": "gen",
+          "translation": "of the people"
+        },
+        {
+          "text": "dīvumque",
+          "case": "gen",
+          "translation": "of the gods"
+        },
+        {
+          "text": "voluptās,",
+          "case": "voc",
+          "translation": "pleasure, delight"
+        },
+        {
+          "text": "alma",
+          "case": "voc",
+          "translation": "nourishing"
+        },
+        {
+          "text": "Venus,",
+          "case": "voc",
+          "translation": "Venus"
+        },
+        {
+          "text": "caelī",
+          "case": "gen",
+          "translation": "of heaven"
+        },
+        {
+          "text": "subter",
+          "case": "none",
+          "translation": "beneath"
+        },
+        {
+          "text": "lābentia",
+          "case": "acc",
+          "verbal": {
+            "form": "participle",
+            "tense": "Present",
+            "voice": "Active"
+          },
+          "translation": "gliding"
+        },
+        {
+          "text": "signa",
+          "case": "acc",
+          "translation": "signs"
+        },
+        {
+          "text": "quae",
+          "case": "nom",
+          "translation": "who, which"
+        },
+        {
+          "text": "mare",
+          "case": "acc",
+          "translation": "sea"
+        },
+        {
+          "text": "nāvigerum",
+          "case": "acc",
+          "translation": "ship-bearing"
+        },
+        {
+          "text": "quae",
+          "case": "nom",
+          "translation": "who, which"
+        },
+        {
+          "text": "terrās",
+          "case": "acc",
+          "translation": "lands"
+        },
+        {
+          "text": "frūgiferentīs",
+          "case": "acc",
+          "verbal": {
+            "form": "participle",
+            "tense": "Present",
+            "voice": "Active"
+          },
+          "translation": "fruit-bearing"
+        },
+        {
+          "text": "concelebrās.",
+          "case": "verb",
+          "tense": "Present",
+          "voice": "Active",
+          "mood": "Indicative",
+          "askTense": true,
+          "askVoice": true,
+          "askMood": false,
+          "person": "2nd",
+          "number": "Singular",
+          "subjInVerb": true,
+          "translation": "you fill"
+        }
       ],
       "links": [
-        { "from": 1, "to": 0, "type": "poss", "label": "Possessor Link", "translation": "mother of Aeneas' descendants" },
-        { "from": 4, "to": 2, "type": "poss", "label": "Possessor Link", "translation": "pleasure of men" },
-        { "from": 4, "to": 3, "type": "poss", "label": "Possessor Link", "translation": "pleasure of gods" },
-        { "from": 5, "to": 6, "type": "adj", "label": "Adjective Link" },
-        { "from": 9, "to": 10, "type": "adj", "label": "Adjective Link" },
-        { "from": 12, "to": 13, "type": "adj", "label": "Adjective Link" },
-        { "from": 16, "to": 15, "type": "adj", "label": "Adjective Link" },
-        { "from": 10, "to": 7, "type": "poss", "label": "Possessor Link", "translation": "signs of heaven" },
-        { "from": 0, "to": 1, "type": "appos", "label": "Apposition Link" },
-        { "from": 2, "to": 4, "type": "appos", "label": "Apposition Link" },
-        { "from": 8, "to": 10, "type": "prep", "label": "Preposition Link", "translation": "beneath the gliding signs of heaven" }
+        {
+          "from": 1,
+          "to": 0,
+          "type": "poss",
+          "label": "Possessor Link",
+          "translation": "mother of Aeneas' descendants"
+        },
+        {
+          "from": 4,
+          "to": 2,
+          "type": "poss",
+          "label": "Possessor Link",
+          "translation": "pleasure of men"
+        },
+        {
+          "from": 4,
+          "to": 3,
+          "type": "poss",
+          "label": "Possessor Link",
+          "translation": "pleasure of gods"
+        },
+        {
+          "from": 5,
+          "to": 6,
+          "type": "adj",
+          "label": "Adjective Link"
+        },
+        {
+          "from": 9,
+          "to": 10,
+          "type": "adj",
+          "label": "Adjective Link"
+        },
+        {
+          "from": 12,
+          "to": 13,
+          "type": "adj",
+          "label": "Adjective Link"
+        },
+        {
+          "from": 16,
+          "to": 15,
+          "type": "adj",
+          "label": "Adjective Link"
+        },
+        {
+          "from": 10,
+          "to": 7,
+          "type": "poss",
+          "label": "Possessor Link",
+          "translation": "signs of heaven"
+        },
+        {
+          "from": 0,
+          "to": 1,
+          "type": "appos",
+          "label": "Apposition Link"
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "type": "appos",
+          "label": "Apposition Link"
+        },
+        {
+          "from": 8,
+          "to": 10,
+          "type": "prep",
+          "label": "Preposition Link",
+          "translation": "beneath the gliding signs of heaven"
+        }
       ],
       "clauses": [
-        { "start": 11, "end": 17, "type": "relative", "label": "Relative", "translation": "you who fill the ship-bearing sea and the fruit-bearing lands" }
+        {
+          "start": 7,
+          "end": 17,
+          "type": "relative",
+          "label": "Relative",
+          "translation": "you who beneath the gliding signs of heaven fill the ship-bearing sea and the fruit-bearing lands"
+        }
       ],
       "phrases": [
-        { "from": 0, "to": 1, "start": 0, "end": 1, "type": "appos", "label": "Apposition", "translation": "mother of Aeneas' descendants" },
-        { "from": 2, "to": 4, "start": 2, "end": 4, "type": "appos", "label": "Apposition", "translation": "pleasure of men and gods" },
-        { "from": 8, "to": 10, "start": 7, "end": 10, "type": "prep", "label": "Prepositional phrase", "translation": "beneath the gliding signs of heaven" }
+        {
+          "from": 0,
+          "to": 1,
+          "start": 0,
+          "end": 1,
+          "type": "appos",
+          "label": "Apposition",
+          "translation": "mother of Aeneas' descendants"
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "start": 2,
+          "end": 4,
+          "type": "appos",
+          "label": "Apposition",
+          "translation": "pleasure of men and gods"
+        },
+        {
+          "from": 8,
+          "to": 10,
+          "start": 7,
+          "end": 10,
+          "type": "prep",
+          "label": "Prepositional phrase",
+          "translation": "beneath the gliding signs of heaven"
+        }
+      ],
+      "unlinked": [
+        [
+          2,
+          3
+        ],
+        [
+          4,
+          5
+        ]
       ]
     },
     {
@@ -9592,6 +10252,7 @@ body.lay-phone .sg-pop .sg-leg .sg-keys { margin-left: 0; }
       <li>Switch between the five layouts in the bar at the top (fold it with "Hide controls").</li>
       <li>Pick a tool (Nominative, Accusative…) and tap words to mark them; tap Check.</li>
       <li>Press "Show the key's marks" and look at how phrases, clauses and links are drawn.</li>
+      <li>After a check, try the four answer-key views (Table, Rows, Interlinear, Both), with "Only what's wrong" on and off.</li>
       <li>On a phone, try it upright and turned sideways.</li>
     </ol>
     <fieldset>
@@ -9629,6 +10290,19 @@ body.lay-phone .sg-pop .sg-leg .sg-keys { margin-left: 0; }
     <div class="fb-field">
       <label class="fb-l" for="fb-marks">Could you tell the phrases, clauses and links apart when the key's marks were shown?</label>
       <textarea id="fb-marks" name="marks"></textarea>
+    </div>
+    <div class="fb-field">
+      <label class="fb-l" for="fb-akey">Which answer key would you rather read? (Check a sentence, then try the buttons above the key: Table, Rows, Interlinear, Both.)</label>
+      <select id="fb-akey" name="akey">
+        <option value="">Choose one</option>
+        <option>Table (one row per question)</option><option>Rows (one line per word)</option>
+        <option>Interlinear (answers under each word)</option><option>Both (interlinear for mistakes, rows for the whole key)</option>
+        <option>No preference</option>
+      </select>
+    </div>
+    <div class="fb-field">
+      <label class="fb-l" for="fb-akeyWhy">Why that one?</label>
+      <textarea id="fb-akeyWhy" name="akeyWhy"></textarea>
     </div>
     <div class="fb-field">
       <label class="fb-l" for="fb-other">Anything else?</label>
@@ -9901,6 +10575,8 @@ body.lay-phone .sg-pop .sg-leg .sg-keys { margin-left: 0; }
       'Why that one:', v('why') || '-', '',
       'Confusing / hard to read / hard to tap:', v('confusing') || '-', '',
       'Phrases, clauses and links:', v('marks') || '-', '',
+      `Answer key they'd rather read: ${v('akey') || '-'}`,
+      'Why that answer key:', v('akeyWhy') || '-', '',
       'Anything else:', v('other') || '-', '',
       `Name: ${v('name') || '-'}`,
       '',
@@ -9915,6 +10591,7 @@ body.lay-phone .sg-pop .sg-leg .sg-keys { margin-left: 0; }
       role: (f.querySelector('input[name="role"]:checked') || {}).value || '',
       device: [...f.querySelectorAll('input[name="device"]:checked')].map(x => x.value).join(', '),
       best: v('best'), why: v('why'), confusing: v('confusing'), marks: v('marks'), other: v('other'),
+      akey: v('akey'), akeyWhy: v('akeyWhy'),
       name: v('name'), website: v('website'),
       layout: layout, screen: `${window.innerWidth}×${window.innerHeight}`
     };
