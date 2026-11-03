@@ -3055,7 +3055,7 @@
        ==================================================================== */
     const PHRASE_TYPES = [
       { id: 'prep',    label: 'Prepositional phrase', trigger: 'preposition + its object' },
-      { id: 'appos',   label: 'Apposition',           trigger: 'a noun that renames another noun, or a verb\'s subject' },
+      { id: 'appos',   label: 'Apposition',           trigger: 'a noun renamed by a noun in the same case' },
       { id: 'abl-abs', label: 'Ablative absolute',    trigger: 'ablative + participle, or two ablatives' }
     ];
     const PHRASE_BY_ID = Object.fromEntries(PHRASE_TYPES.map(t => [t.id, t]));
@@ -3370,10 +3370,9 @@
       phrase: {
         title: "Phrase Tool",
         functions: [
-          { name: "Link, underline, name", desc: "Click the two words at the heart of the phrase \u2014 the preposition and its object, a noun and the word it renames, an ablative and its participle. Then underline the whole phrase, and say what kind it is." },
+          { name: "Link, underline, name", desc: "Click the two words at the heart of the phrase \u2014 the preposition and its object, a noun and the noun that renames it, an ablative and its participle. Then underline the whole phrase, and say what kind it is." },
           { name: "The underline is suggested", desc: "After the link, the words already joined to it by your own adjective and possessor links are underlined for you. Press Enter or click \u201cThese words\u201d to keep them, or click the first and last word yourself." },
           { name: "Three kinds", desc: "Prepositional phrase, apposition, ablative absolute. For an ablative absolute, mark the participle first and the link will be an adjective link; two nouns make an apposition link." },
-          { name: "Apposition", desc: "Click the renaming noun, then the noun it renames (or the verb, when it renames the verb\u2019s subject). Underline only the renaming words: in <em>Aeneadum genetr\u012bx, \u2026 alma Venus</em>, the underline is <em>Aeneadum genetr\u012bx</em>, and the link runs to <em>Venus</em>." },
           { name: "Several objects", desc: "A preposition can govern more than one object, as in <em>per viās et pontēs</em>. To add a link to another object, simply click the preposition, then the other object. The underline will expand to take in every object. You can keep it or choose your own." },
           { name: "To change one", desc: "Tap under a word of the underline. Under the preposition: the whole phrase goes, with every link from it. Under an object: that link goes and the underline stays. Under the first or last word, if it is not an object: the underline gets shorter. Under any other word: that word is left out. Tap the dotted gap to put it back. When no links are left, a tap under any word removes the phrase. Point at the underline to see what a tap will do." },
           { name: "Its code", desc: "Every phrase carries a short code under its line \u2014 prep, appos, abl abs \u2014 spelled out in full when you point at a word inside it." }
@@ -4115,16 +4114,8 @@
             return;
           }
         }
-        /* G6: an apposition's link runs from the appositive to the word it renames, and
-           only the appositive has to lie inside the underline. A phrase that arrives with
-           `to` inside the range and `from` outside is turned the right way round. */
-        if (ph.type === 'appos') {
-          const inR = i => i >= ph.start && i <= ph.end;
-          if (inR(ph.to) && !inR(ph.from)) ph = Object.assign({}, ph, { from: ph.to, to: ph.from });
-        }
         if (phrases.some(x => samePair(x, ph))) return;
-        const start = ph.type === 'appos' ? Math.min(ph.start, ph.from) : Math.min(ph.start, ph.from, ph.to);
-        const end = ph.type === 'appos' ? Math.max(ph.end, ph.from) : Math.max(ph.end, ph.from, ph.to);
+        const start = Math.min(ph.start, ph.from, ph.to), end = Math.max(ph.end, ph.from, ph.to);
         const made = Object.assign({}, ph, { start, end, label: phraseLabel(ph.type) });
         if ('skip' in ph) {
           const raw = Array.isArray(ph.skip) ? ph.skip : [];
@@ -4622,7 +4613,7 @@
         stepText = clauseStartIndex === null ? 'Step 1: Select the first word of the clause' : 'Step 2: Select the last word — then say what kind it is';
       } else if (selectedTool === 'phrase') {
         if (!phraseDraft) stepText = 'Step 1: Select one of the two words at the heart of the phrase';
-        else if (phraseDraft.to === undefined) stepText = 'Step 2: Select the word it is joined to (for an apposition: the word it renames)'
+        else if (phraseDraft.to === undefined) stepText = 'Step 2: Select the word it is joined to'
           + (userPrepPhraseAt(phraseDraft.from) ? ' \u2014 a new object joins the phrase already on this preposition' : '');
         else if (phraseDraft.spanStart === undefined) {
           indicator.innerHTML = 'Step 3: Keep the underlined words, or select the first word of the phrase'
@@ -7077,17 +7068,7 @@
           phraseDraft.suggest = derivePhraseSpan(userLinks, P.from, o, phraseDraft.heads);
         } else {
           phraseDraft.to = index;
-          /* G6: a word painted as a verb cannot be the appositive, so the phrase can only
-             be an apposition renaming the verb's subject: suggest the other word's own
-             agreement group. */
-          const isVerbWord = i => !!(userWordState[i] && userWordState[i].case === 'verb');
-          const vA = isVerbWord(phraseDraft.from), vB = isVerbWord(index);
-          if (vA !== vB) {
-            const other = vA ? index : phraseDraft.from;
-            phraseDraft.suggest = derivePhraseSpan(userLinks, other, other);
-          } else {
-            phraseDraft.suggest = derivePhraseSpan(userLinks, phraseDraft.from, index);
-          }
+          phraseDraft.suggest = derivePhraseSpan(userLinks, phraseDraft.from, index);
         }
         wordBox.classList.add('selected-source');
         for (let i = phraseDraft.suggest.start; i <= phraseDraft.suggest.end; i++) {
@@ -7115,10 +7096,9 @@
       if (!phraseDraft || phraseDraft.to === undefined) return;
       /* A second object joins the phrase that is there: no naming pop-up. */
       if (phraseDraft.existing && !phraseDraft.redraw) { finishExtension(start, end); return; }
-      /* G6: the span is shown as drawn. Which words it must reach depends on the kind of
-         phrase, so any stretching happens in commitPhrase, once the kind is chosen. */
-      phraseDraft.start = start;
-      phraseDraft.end = end;
+      const heads = phraseDraft.heads || [];
+      phraseDraft.start = Math.min(start, phraseDraft.from, phraseDraft.to, ...heads);
+      phraseDraft.end = Math.max(end, phraseDraft.from, phraseDraft.to, ...heads);
       phraseDraft.skip = new Set();      // no chip starts struck through
       const modal = document.getElementById('phrase-modal');
       const list = document.getElementById('phrase-modal-list');
@@ -7190,28 +7170,6 @@
       const existing = phraseDraft.existing || null;
       /* The preposition goes first, so a second object can find it again. */
       if (typeId === 'prep' && !existing) { const o = orientPrep(from, to); from = o.prep; to = o.obj; }
-      /* G6. An apposition's underline holds only the appositive: if exactly one centre word
-         is inside the span it is `from` and the other is `to`; both inside keeps the click
-         order (the old shape); neither inside stretches the span to the first-clicked word,
-         which becomes `from` (unless exactly one is painted a verb: the verb is renamed,
-         never the appositive). Every other kind holds both centres and every object head,
-         and says so when it had to stretch. */
-      let stretchNote = '';
-      if (typeId === 'appos') {
-        const inR = i => i >= start && i <= end;
-        const fIn = inR(from), tIn = inR(to);
-        if (tIn && !fIn) { const t = from; from = to; to = t; }
-        else if (!fIn && !tIn) {
-          const isV = i => !!(userWordState[i] && userWordState[i].case === 'verb');
-          if (isV(from) && !isV(to)) { const t = from; from = to; to = t; }
-          start = Math.min(start, from); end = Math.max(end, from);
-        }
-      } else {
-        const need = [from, to].concat(phraseDraft.heads || []);
-        const reached = Array.from(new Set(need.filter(i => i < start || i > end))).sort((a, b) => a - b);
-        start = Math.min(start, ...need); end = Math.max(end, ...need);
-        if (reached.length) stretchNote = `The underline was stretched to reach ${joinWordList(reached)}: a phrase holds its own centre.`;
-      }
       pushState();
       const linkType = phraseLinkType(typeId, from, to);
       if (!userLinks.some(l => l.type === linkType && samePair(l, { from, to }))) {
@@ -7227,7 +7185,6 @@
       closePhraseModal();
       clearSelections();
       renderSentence();              // a new phrase gathers its words onto one line
-      if (stretchNote) setPhraseStatus(stretchNote);
     }
 
     function closePhraseModal() {
@@ -8910,18 +8867,8 @@
           pointsEarned += 1;
         }
 
-        /* G6: an apposition to a verb renames its implied subject; say which, in brackets. */
-        const withSubj = (i) => {
-          const w = currentSentence.words[i];
-          const t = getDisplayText(w.text);
-          if (link.type === 'appos' && w.case === 'verb' && isTruthyFlag(w.subjInVerb)) {
-            const p = expectedPronoun(w);
-            if (p) return `${t} (${p})`;
-          }
-          return t;
-        };
-        const fromWord = withSubj(link.from);
-        const toWord = withSubj(link.to);
+        const fromWord = getDisplayText(currentSentence.words[link.from].text);
+        const toWord = getDisplayText(currentSentence.words[link.to].text);
         /* Was a ternary, which called every non-adjective link a Possessor Link.
            With the preposition link arriving in II that would have quietly filed
            every prepositional phrase under the wrong construction in the error
@@ -9316,7 +9263,7 @@
          rows   — one row per word, every question about it a chip on that
                   row; phrases and clauses one row each (kind, core, breadth).
          inter  — the sentence in reading order, the chips under each word.
-         both   — interlinear while "Only what's wrong" is on, rows when off.
+         hybrid — interlinear while "Only what's wrong" is on, rows when off.
 
        "Only what's wrong" starts on in flags-only mode and off when the
        full key is the setting. Before Reveal, flags-only never shows the
@@ -9327,7 +9274,7 @@
        structure it belongs to), so the score and the four views can never
        disagree.
        ================================================================== */
-    const KEY_VIEWS = [['table', 'Table'], ['rows', 'Rows'], ['inter', 'Interlinear'], ['both', 'Both']];
+    const KEY_VIEWS = [['table', 'Table'], ['rows', 'Rows'], ['inter', 'Interlinear'], ['both', 'Hybrid']];
     let keyView = 'rows';
     try { const v = localStorage.getItem('picto.keyView'); if (KEY_VIEWS.some(k => k[0] === v)) keyView = v; } catch (e) {}
     let keyOnlyWrong = null;     // null: follow the mode's default
@@ -9559,390 +9506,1962 @@ body.lay-phone .sg-pop .sg-pr { grid-template-columns: minmax(0, 1fr); }
 body.lay-phone .sg-pop .sg-leg .sg-keys { margin-left: 0; }
 </style>
 <script type="application/json" id="lay-pack">{
-  "name": "JLC VIII",
-  "description": "Sentences provided by attendees of Jesuit Latin Colloquium VIII.",
-  "prefix": "jlc8",
-  "ranks": [
-    { "key": "Tiro", "label": "Tiro", "blurb": "Sentences at this level are limited to present tense; nominative, accusative and ablative cases; basic prepositional phrases and simple noun-adjective agreement.", "asks": { "tense": false } },
-    { "key": "Miles", "label": "Miles", "blurb": "Sentences at this level add the perfect, imperfect and future tenses, as well as the genitive and dative cases and basic uses of the infinitive." },
-    { "key": "Centurio", "label": "Centurio", "blurb": "Sentences at this level add the pluperfect and future perfect tenses, as well as the present, imperfect and future tenses of the passive voice, and you begin seeing relative clauses.", "asks": { "voice": true, "degree": true } },
-    { "key": "Legatus", "label": "Legatus", "blurb": "Sentences at this level include the perfect, pluperfect, and future perfect tenses of the passive voice, as well as indirect statements and ablative absolutes.", "asks": { "voice": true, "degree": true } },
-    { "key": "Imperator", "label": "Imperator", "blurb": "Sentences at this level include all verb tenses, voices and moods, all cases, and all kinds of syntactic connections.", "asks": { "voice": true, "mood": true, "degree": true } }
-  ],
-  "sentences": [
+ "name": "JLC VIII",
+ "description": "Sentences provided by attendees of Jesuit Latin Colloquium VIII.",
+ "prefix": "jlc8",
+ "ranks": [
+  {
+   "key": "Tiro",
+   "label": "Tiro",
+   "blurb": "Sentences at this level are limited to present tense; nominative, accusative and ablative cases; basic prepositional phrases and simple noun-adjective agreement.",
+   "asks": {
+    "tense": false
+   }
+  },
+  {
+   "key": "Miles",
+   "label": "Miles",
+   "blurb": "Sentences at this level add the perfect, imperfect and future tenses, as well as the genitive and dative cases and basic uses of the infinitive."
+  },
+  {
+   "key": "Centurio",
+   "label": "Centurio",
+   "blurb": "Sentences at this level add the pluperfect and future perfect tenses, as well as the present, imperfect and future tenses of the passive voice, and you begin seeing relative clauses.",
+   "asks": {
+    "voice": true,
+    "degree": true
+   }
+  },
+  {
+   "key": "Legatus",
+   "label": "Legatus",
+   "blurb": "Sentences at this level include the perfect, pluperfect, and future perfect tenses of the passive voice, as well as indirect statements and ablative absolutes.",
+   "asks": {
+    "voice": true,
+    "degree": true
+   }
+  },
+  {
+   "key": "Imperator",
+   "label": "Imperator",
+   "blurb": "Sentences at this level include all verb tenses, voices and moods, all cases, and all kinds of syntactic connections.",
+   "asks": {
+    "voice": true,
+    "mood": true,
+    "degree": true
+   }
+  }
+ ],
+ "sentences": [
+  {
+   "id": "jlc8:ego-colloquium-exspecto",
+   "text": "Ego colloquium exspectō.",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "",
+   "translation": "I am waiting for the colloquium.",
+   "difficulty": "Tiro",
+   "words": [
     {
-      "id": "jlc8:se-suis-copiis-suoque",
-      "text": "Sē suīs cōpiīs suōque exercitū illīs rēgna conciliātūrum cōnfirmat.",
-      "author": "MMB", "category": "", "pack": "JLC VIII", "passage": "DBG 1.3.6",
-      "translation": "He confirms that he will acquire kingdoms for them with his troops and his army.",
-      "difficulty": "Miles",
-      "words": [
-        { "text": "sē", "case": "acc", "translation": "himself, themselves" },
-        { "text": "suīs", "case": "abl", "translation": "his own, her own, its own" },
-        { "text": "cōpiīs", "case": "abl", "translation": "troops, forces" },
-        { "text": "suōque", "case": "abl", "translation": "and his own" },
-        { "text": "exercitū", "case": "abl", "translation": "by the army" },
-        { "text": "illīs", "case": "dat", "translation": "to/for those" },
-        { "text": "rēgna", "case": "acc", "translation": "kingdoms, kingship" },
-        { "text": "conciliātūrum", "case": "acc", "verbal": { "form": "participle", "tense": "Future", "voice": "Active" }, "translation": "about to acquire" },
-        { "text": "cōnfirmat.", "case": "verb", "tense": "Present", "voice": "Active", "mood": "Indicative", "askTense": true, "askVoice": false, "askMood": false, "person": "3rd", "number": "Singular", "subjInVerb": true, "translation": "he insists" }
-      ],
-      "links": [
-        { "from": 1, "to": 2, "type": "adj", "label": "Adjective Link" },
-        { "from": 3, "to": 4, "type": "adj", "label": "Adjective Link" }
-      ],
-      "clauses": [
-        { "start": 0, "end": 7, "type": "ind-statement", "label": "Indirect statement", "translation": "that he will acquire kingdoms for them with his troops and his armies" }
-      ],
-      "phrases": []
+     "text": "Ego",
+     "case": "nom",
+     "translation": "I"
     },
     {
-      "id": "jlc8:per-ego-has-lacrimas",
-      "text": "Per ego hās lacrimās dextramque tuam tē [ōrō].",
-      "author": "MMB", "category": "", "pack": "JLC VIII", "passage": "Verg.Aen.4.314-319",
-      "translation": "I [beg] you by these tears and by your right hand.",
-      "difficulty": "Miles",
-      "words": [
-        { "text": "Per", "case": "none", "translation": "through, by" },
-        { "text": "ego", "case": "nom", "translation": "I" },
-        { "text": "hās", "case": "acc", "translation": "these" },
-        { "text": "lacrimās", "case": "acc", "translation": "tears" },
-        { "text": "dextramque", "case": "acc", "translation": "right, right hand" },
-        { "text": "tuam", "case": "acc", "translation": "your" },
-        { "text": "tē", "case": "acc", "translation": "you" },
-        { "text": "[ōrō].", "case": "verb", "tense": "Present", "voice": "Active", "mood": "Indicative", "askTense": true, "askVoice": false, "askMood": false, "person": "1st", "number": "Singular", "subjInVerb": true, "translation": "I beg" }
-      ],
-      "links": [
-        { "from": 2, "to": 3, "type": "adj", "label": "Adjective Link" },
-        { "from": 4, "to": 5, "type": "adj", "label": "Adjective Link" },
-        { "from": 0, "to": 3, "type": "prep", "label": "Preposition Link", "translation": "By these tears and your right hand" },
-        { "from": 0, "to": 4, "type": "prep", "label": "Preposition Link" }
-      ],
-      "clauses": [],
-      "phrases": [
-        { "from": 0, "to": 3, "start": 0, "end": 5, "skip": [1], "type": "prep", "label": "Prepositional phrase", "translation": "By these tears and your right hand" }
-      ]
+     "text": "colloquium",
+     "case": "acc",
+     "translation": "conversation, conference, discourse"
     },
     {
-      "id": "jlc8:aeneadum-genetrix-hominum-divumque",
-      "text": "Aeneadum genetrīx, hominum dīvumque voluptās, alma Venus, caelī subter lābentia signa quae mare nāvigerum quae terrās frūgiferentīs concelebrās.",
-      "author": "MMB",
-      "category": "",
-      "pack": "JLC VIII",
-      "passage": "Lucr. 1.1",
-      "translation": "Mother of Aeneas' descendants, pleasure of men and of gods, nourishing Venus, you who beneath the gliding signs of heaven fill the ship-bearing sea and the fruit-bearing lands.",
-      "difficulty": "Centurio",
-      "words": [
-        {
-          "text": "Aeneadum",
-          "case": "gen",
-          "translation": "of Aeneas' descendants"
-        },
-        {
-          "text": "genetrīx,",
-          "case": "voc",
-          "translation": "mother"
-        },
-        {
-          "text": "hominum",
-          "case": "gen",
-          "translation": "of the people"
-        },
-        {
-          "text": "dīvumque",
-          "case": "gen",
-          "translation": "of the gods"
-        },
-        {
-          "text": "voluptās,",
-          "case": "voc",
-          "translation": "pleasure, delight"
-        },
-        {
-          "text": "alma",
-          "case": "voc",
-          "translation": "nourishing"
-        },
-        {
-          "text": "Venus,",
-          "case": "voc",
-          "translation": "Venus"
-        },
-        {
-          "text": "caelī",
-          "case": "gen",
-          "translation": "of heaven"
-        },
-        {
-          "text": "subter",
-          "case": "none",
-          "translation": "beneath"
-        },
-        {
-          "text": "lābentia",
-          "case": "acc",
-          "verbal": {
-            "form": "participle",
-            "tense": "Present",
-            "voice": "Active"
-          },
-          "translation": "gliding"
-        },
-        {
-          "text": "signa",
-          "case": "acc",
-          "translation": "signs"
-        },
-        {
-          "text": "quae",
-          "case": "nom",
-          "translation": "who, which"
-        },
-        {
-          "text": "mare",
-          "case": "acc",
-          "translation": "sea"
-        },
-        {
-          "text": "nāvigerum",
-          "case": "acc",
-          "translation": "ship-bearing"
-        },
-        {
-          "text": "quae",
-          "case": "nom",
-          "translation": "who, which"
-        },
-        {
-          "text": "terrās",
-          "case": "acc",
-          "translation": "lands"
-        },
-        {
-          "text": "frūgiferentīs",
-          "case": "acc",
-          "verbal": {
-            "form": "participle",
-            "tense": "Present",
-            "voice": "Active"
-          },
-          "translation": "fruit-bearing"
-        },
-        {
-          "text": "concelebrās.",
-          "case": "verb",
-          "tense": "Present",
-          "voice": "Active",
-          "mood": "Indicative",
-          "askTense": true,
-          "askVoice": true,
-          "askMood": false,
-          "person": "2nd",
-          "number": "Singular",
-          "subjInVerb": true,
-          "translation": "you fill"
-        }
-      ],
-      "links": [
-        {
-          "from": 1,
-          "to": 0,
-          "type": "poss",
-          "label": "Possessor Link",
-          "translation": "mother of Aeneas' descendants"
-        },
-        {
-          "from": 4,
-          "to": 2,
-          "type": "poss",
-          "label": "Possessor Link",
-          "translation": "pleasure of men"
-        },
-        {
-          "from": 4,
-          "to": 3,
-          "type": "poss",
-          "label": "Possessor Link",
-          "translation": "pleasure of gods"
-        },
-        {
-          "from": 5,
-          "to": 6,
-          "type": "adj",
-          "label": "Adjective Link"
-        },
-        {
-          "from": 9,
-          "to": 10,
-          "type": "adj",
-          "label": "Adjective Link"
-        },
-        {
-          "from": 12,
-          "to": 13,
-          "type": "adj",
-          "label": "Adjective Link"
-        },
-        {
-          "from": 16,
-          "to": 15,
-          "type": "adj",
-          "label": "Adjective Link"
-        },
-        {
-          "from": 10,
-          "to": 7,
-          "type": "poss",
-          "label": "Possessor Link",
-          "translation": "signs of heaven"
-        },
-        {
-          "from": 0,
-          "to": 1,
-          "type": "appos",
-          "label": "Apposition Link"
-        },
-        {
-          "from": 2,
-          "to": 4,
-          "type": "appos",
-          "label": "Apposition Link"
-        },
-        {
-          "from": 8,
-          "to": 10,
-          "type": "prep",
-          "label": "Preposition Link",
-          "translation": "beneath the gliding signs of heaven"
-        }
-      ],
-      "clauses": [
-        {
-          "start": 7,
-          "end": 17,
-          "type": "relative",
-          "label": "Relative",
-          "translation": "you who beneath the gliding signs of heaven fill the ship-bearing sea and the fruit-bearing lands"
-        }
-      ],
-      "phrases": [
-        {
-          "from": 0,
-          "to": 1,
-          "start": 0,
-          "end": 1,
-          "type": "appos",
-          "label": "Apposition",
-          "translation": "mother of Aeneas' descendants"
-        },
-        {
-          "from": 2,
-          "to": 4,
-          "start": 2,
-          "end": 4,
-          "type": "appos",
-          "label": "Apposition",
-          "translation": "pleasure of men and gods"
-        },
-        {
-          "from": 8,
-          "to": 10,
-          "start": 7,
-          "end": 10,
-          "type": "prep",
-          "label": "Prepositional phrase",
-          "translation": "beneath the gliding signs of heaven"
-        }
-      ],
-      "unlinked": [
-        [
-          2,
-          3
-        ],
-        [
-          4,
-          5
-        ]
-      ]
-    },
-    {
-      "id": "jlc8:nam-in-scrinio-eius",
-      "text": "Nam in scrīniō eius datus ā Cārō dē mē libellus inventus est.",
-      "author": "MMB", "category": "", "pack": "JLC VIII", "passage": "Plin.Ep.VII.27.14",
-      "translation": "For in his writing-desk an accusation was found, given by Carus about me.",
-      "difficulty": "Legatus",
-      "words": [
-        { "text": "Nam", "case": "none", "translation": "for" },
-        { "text": "in", "case": "none", "translation": "in, into, on" },
-        { "text": "scrīniō", "case": "abl", "translation": "writing desk" },
-        { "text": "eius", "case": "gen", "translation": "his, her, its" },
-        { "text": "datus", "case": "nom", "verbal": { "form": "participle", "tense": "Perfect", "voice": "Passive" }, "translation": "given" },
-        { "text": "ā", "case": "none", "translation": "by, from" },
-        { "text": "Cārō", "case": "abl", "translation": "Carus" },
-        { "text": "dē", "case": "none", "translation": "down from, about" },
-        { "text": "mē", "case": "acc", "translation": "me" },
-        { "text": "libellus", "case": "nom", "translation": "an accusation" },
-        { "text": "inventus est.", "case": "verb", "tense": "Perfect", "voice": "Passive", "mood": "Indicative", "askTense": true, "askVoice": true, "askMood": false, "person": "3rd", "number": "Singular", "translation": "" }
-      ],
-      "links": [
-        { "from": 4, "to": 9, "type": "adj", "label": "Adjective Link" },
-        { "from": 2, "to": 3, "type": "poss", "label": "Possessor Link", "translation": "his writing-desk" },
-        { "from": 5, "to": 6, "type": "prep", "label": "Preposition Link", "translation": "by Carus" },
-        { "from": 7, "to": 8, "type": "prep", "label": "Preposition Link", "translation": "about me" },
-        { "from": 1, "to": 2, "type": "prep", "label": "Preposition Link", "translation": "in his writing-desk" }
-      ],
-      "clauses": [],
-      "phrases": [
-        { "from": 5, "to": 6, "start": 5, "end": 6, "type": "prep", "label": "Prepositional phrase", "translation": "by Carus" },
-        { "from": 7, "to": 8, "start": 7, "end": 8, "type": "prep", "label": "Prepositional phrase", "translation": "about me" },
-        { "from": 1, "to": 2, "start": 1, "end": 3, "type": "prep", "label": "Prepositional phrase", "translation": "in his writing-desk" }
-      ]
-    },
-    {
-      "id": "jlc8:ex-quo-coniectari-potest",
-      "text": "ex quō coniectārī potest, quia reīs mōris est submittere capillum, recīsōs meōrum capillōs dēpulsī quod imminēbat perīculī signum fuisse.",
-      "author": "MMB", "category": "", "pack": "JLC VIII", "passage": "Plin.Ep.VII.27.14",
-      "translation": "from which it can be guessed, since it was of custom for accused people to let their hair grow, that the cut hair of my people was a sign of the danger, which was overhanging me, being driven away.",
-      "difficulty": "Legatus",
-      "words": [
-        { "text": "ex", "case": "none", "translation": "out of" },
-        { "text": "quō", "case": "abl", "translation": "which" },
-        { "text": "coniectārī", "case": "inf", "askType": true, "infTense": "Present", "infVoice": "Passive", "translation": "to be guessed" },
-        { "text": "potest,", "case": "verb", "tense": "Present", "voice": "Active", "mood": "Indicative", "askTense": true, "askVoice": true, "askMood": false, "person": "3rd", "number": "Singular", "translation": "he/she/it can" },
-        { "text": "quia", "case": "none", "translation": "because" },
-        { "text": "reīs", "case": "dat", "translation": "for defendants" },
-        { "text": "mōris", "case": "gen", "translation": "of custom" },
-        { "text": "est", "case": "verb", "tense": "Present", "voice": "Active", "mood": "Indicative", "askTense": true, "askVoice": true, "askMood": false, "person": "3rd", "number": "Singular", "translation": "he/she/it is" },
-        { "text": "submittere", "case": "inf", "askType": true, "infTense": "Present", "infVoice": "Active", "translation": "to let grow" },
-        { "text": "capillum,", "case": "acc", "translation": "hair" },
-        { "text": "recīsōs", "case": "acc", "verbal": { "form": "participle", "tense": "Perfect", "voice": "Passive" }, "translation": "cut down" },
-        { "text": "meōrum", "case": "gen", "translation": "of my [slaves]" },
-        { "text": "capillōs", "case": "acc", "translation": "hair" },
-        { "text": "dēpulsī", "case": "gen", "verbal": { "form": "participle", "tense": "Perfect", "voice": "Passive" }, "translation": "driven away" },
-        { "text": "quod", "case": "nom", "translation": "which" },
-        { "text": "imminēbat", "case": "verb", "tense": "Imperfect", "voice": "Active", "mood": "Indicative", "askTense": true, "askVoice": true, "askMood": false, "person": "3rd", "number": "Singular", "subjInVerb": true, "translation": "was overhanging" },
-        { "text": "perīculī", "case": "gen", "translation": "danger" },
-        { "text": "signum", "case": "acc", "translation": "a sign" },
-        { "text": "fuisse.", "case": "inf", "askType": true, "infTense": "Perfect", "infVoice": "Active", "translation": "to have been" }
-      ],
-      "links": [
-        { "from": 11, "to": 12, "type": "poss", "label": "Possessor Link", "translation": "the hair of my [slaves]" },
-        { "from": 17, "to": 16, "type": "poss", "label": "Possessor Link", "translation": "sign of the danger" },
-        { "from": 10, "to": 12, "type": "adj", "label": "Adjective Link" },
-        { "from": 13, "to": 16, "type": "adj", "label": "Adjective Link" },
-        { "from": 0, "to": 1, "type": "prep", "label": "Preposition Link", "translation": "from which" }
-      ],
-      "clauses": [
-        { "start": 10, "end": 18, "type": "ind-statement", "label": "Indirect statement", "translation": "that the cut hair of my [slaves] was a sign that the danger which was overhanging me had been driven away." },
-        { "start": 14, "end": 15, "type": "relative", "label": "Relative", "translation": "which was hanging over [me]" }
-      ],
-      "phrases": [
-        { "from": 0, "to": 1, "start": 0, "end": 1, "type": "prep", "label": "Prepositional phrase", "translation": "from which" }
-      ]
+     "text": "exspectō.",
+     "case": "verb",
+     "tense": "Present",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": false,
+     "askVoice": false,
+     "askMood": false,
+     "person": "1st",
+     "number": "Singular",
+     "translation": "I await"
     }
-  ]
-}
-</script>
+   ],
+   "links": [],
+   "clauses": [],
+   "phrases": []
+  },
+  {
+   "id": "jlc8:sum-fessa",
+   "text": "Sum fessa.",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "",
+   "translation": "I am tired.",
+   "difficulty": "Tiro",
+   "words": [
+    {
+     "text": "Sum",
+     "case": "verb",
+     "tense": "Present",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": false,
+     "askVoice": false,
+     "askMood": false,
+     "person": "1st",
+     "number": "Singular",
+     "translation": "I am"
+    },
+    {
+     "text": "fessa.",
+     "case": "nom",
+     "translation": "tired"
+    }
+   ],
+   "links": [],
+   "clauses": [],
+   "phrases": []
+  },
+  {
+   "id": "jlc8:nimis-opus-quinque-dies",
+   "text": "Nimis opus quīnque diēs fēcī.",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "",
+   "translation": "I did too much work for five days.",
+   "difficulty": "Miles",
+   "words": [
+    {
+     "text": "Nimis",
+     "case": "none",
+     "translation": "too much"
+    },
+    {
+     "text": "opus",
+     "case": "acc",
+     "translation": "work, toil, task"
+    },
+    {
+     "text": "quīnque",
+     "case": "none",
+     "translation": "five"
+    },
+    {
+     "text": "diēs",
+     "case": "acc",
+     "translation": "days"
+    },
+    {
+     "text": "fēcī.",
+     "case": "verb",
+     "tense": "Perfect",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": false,
+     "askMood": false,
+     "person": "1st",
+     "number": "Singular",
+     "subjInVerb": true,
+     "translation": "I did"
+    }
+   ],
+   "links": [
+    {
+     "from": 2,
+     "to": 3,
+     "type": "adj",
+     "label": "Adjective Link"
+    }
+   ],
+   "clauses": [],
+   "phrases": []
+  },
+  {
+   "id": "jlc8:vis-consili-expers-mole",
+   "text": "Vīs cōnsilī expers mōle ruit suā.",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "",
+   "translation": "Brute force, without wisdom, is ruined by its own weight.",
+   "difficulty": "Miles",
+   "words": [
+    {
+     "text": "Vīs",
+     "case": "nom",
+     "translation": "force, power, violence"
+    },
+    {
+     "text": "cōnsilī",
+     "case": "gen",
+     "translation": "wisdom, advice"
+    },
+    {
+     "text": "expers",
+     "case": "nom",
+     "translation": "lacking, free from"
+    },
+    {
+     "text": "mōle",
+     "case": "abl",
+     "translation": "weight, mass"
+    },
+    {
+     "text": "ruit",
+     "case": "verb",
+     "tense": "Present",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": false,
+     "askMood": false,
+     "person": "3rd",
+     "number": "Singular",
+     "translation": "is ruined"
+    },
+    {
+     "text": "suā.",
+     "case": "abl",
+     "translation": "his own, her own, its own"
+    }
+   ],
+   "links": [
+    {
+     "from": 2,
+     "to": 1,
+     "type": "poss",
+     "label": "Possessor Link",
+     "translation": "free from wisdom"
+    },
+    {
+     "from": 3,
+     "to": 5,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 0,
+     "to": 2,
+     "type": "adj",
+     "label": "Adjective Link"
+    }
+   ],
+   "clauses": [],
+   "phrases": []
+  },
+  {
+   "id": "jlc8:quas-colligis-illas-sententias",
+   "text": "Quās colligis illās sententiās legere velim!",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "",
+   "translation": "I would like to read those sentences which you are collecting!",
+   "difficulty": "Centurio",
+   "words": [
+    {
+     "text": "Quās",
+     "case": "acc",
+     "translation": "whom, which"
+    },
+    {
+     "text": "colligis",
+     "case": "verb",
+     "tense": "Present",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": true,
+     "askMood": false,
+     "person": "2nd",
+     "number": "Singular",
+     "subjInVerb": true,
+     "translation": ""
+    },
+    {
+     "text": "illās",
+     "case": "acc",
+     "translation": "that, those"
+    },
+    {
+     "text": "sententiās",
+     "case": "acc",
+     "translation": "sentences"
+    },
+    {
+     "text": "legere",
+     "case": "inf",
+     "askType": true,
+     "infTense": "Present",
+     "infVoice": "Active",
+     "translation": "to read"
+    },
+    {
+     "text": "velim!",
+     "case": "verb",
+     "tense": "Present",
+     "voice": "Active",
+     "mood": "Subjunctive",
+     "askTense": true,
+     "askVoice": true,
+     "askMood": false,
+     "person": "1st",
+     "number": "Singular",
+     "subjInVerb": true,
+     "translation": "I would like"
+    }
+   ],
+   "links": [
+    {
+     "from": 2,
+     "to": 3,
+     "type": "adj",
+     "label": "Adjective Link"
+    }
+   ],
+   "clauses": [
+    {
+     "start": 0,
+     "end": 1,
+     "type": "relative",
+     "label": "Relative",
+     "translation": "which you are collecting"
+    }
+   ],
+   "phrases": []
+  },
+  {
+   "id": "jlc8:se-suis-copiis-suoque",
+   "text": "Sē suīs cōpiīs suōque exercitū illīs rēgna conciliātūrum cōnfirmat.",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "DBG 1.3.6",
+   "translation": "He confirms that he will acquire kingdoms for them with his troops and his army.",
+   "difficulty": "Miles",
+   "words": [
+    {
+     "text": "sē",
+     "case": "acc",
+     "translation": "himself, themselves"
+    },
+    {
+     "text": "suīs",
+     "case": "abl",
+     "translation": "his own, her own, its own"
+    },
+    {
+     "text": "cōpiīs",
+     "case": "abl",
+     "translation": "troops, forces"
+    },
+    {
+     "text": "suōque",
+     "case": "abl",
+     "translation": "and his own"
+    },
+    {
+     "text": "exercitū",
+     "case": "abl",
+     "translation": "by the army"
+    },
+    {
+     "text": "illīs",
+     "case": "dat",
+     "translation": "to/for those"
+    },
+    {
+     "text": "rēgna",
+     "case": "acc",
+     "translation": "kingdoms, kingship"
+    },
+    {
+     "text": "conciliātūrum",
+     "case": "acc",
+     "verbal": {
+      "form": "participle",
+      "tense": "Future",
+      "voice": "Active"
+     },
+     "translation": "about to acquire"
+    },
+    {
+     "text": "cōnfirmat.",
+     "case": "verb",
+     "tense": "Present",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": false,
+     "askMood": false,
+     "person": "3rd",
+     "number": "Singular",
+     "subjInVerb": true,
+     "translation": "he insists"
+    }
+   ],
+   "links": [
+    {
+     "from": 1,
+     "to": 2,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 3,
+     "to": 4,
+     "type": "adj",
+     "label": "Adjective Link"
+    }
+   ],
+   "clauses": [
+    {
+     "start": 0,
+     "end": 7,
+     "type": "ind-statement",
+     "label": "Indirect statement",
+     "translation": "that he will acquire kingdoms for them with his troops and his armies"
+    }
+   ],
+   "phrases": []
+  },
+  {
+   "id": "jlc8:per-ego-has-lacrimas",
+   "text": "Per ego hās lacrimās dextramque tuam tē [ōrō].",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "Verg.Aen.4.314-319",
+   "translation": "I [beg] you by these tears and by your right hand.",
+   "difficulty": "Miles",
+   "words": [
+    {
+     "text": "Per",
+     "case": "none",
+     "translation": "through, by"
+    },
+    {
+     "text": "ego",
+     "case": "nom",
+     "translation": "I"
+    },
+    {
+     "text": "hās",
+     "case": "acc",
+     "translation": "these"
+    },
+    {
+     "text": "lacrimās",
+     "case": "acc",
+     "translation": "tears"
+    },
+    {
+     "text": "dextramque",
+     "case": "acc",
+     "translation": "right, right hand"
+    },
+    {
+     "text": "tuam",
+     "case": "acc",
+     "translation": "your"
+    },
+    {
+     "text": "tē",
+     "case": "acc",
+     "translation": "you"
+    },
+    {
+     "text": "[ōrō].",
+     "case": "verb",
+     "tense": "Present",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": false,
+     "askMood": false,
+     "person": "1st",
+     "number": "Singular",
+     "subjInVerb": true,
+     "translation": "I beg"
+    }
+   ],
+   "links": [
+    {
+     "from": 2,
+     "to": 3,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 4,
+     "to": 5,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 0,
+     "to": 3,
+     "type": "prep",
+     "label": "Preposition Link",
+     "translation": "By these tears and your right hand"
+    },
+    {
+     "from": 0,
+     "to": 4,
+     "type": "prep",
+     "label": "Preposition Link"
+    }
+   ],
+   "clauses": [],
+   "phrases": [
+    {
+     "from": 0,
+     "to": 3,
+     "start": 0,
+     "end": 5,
+     "skip": [
+      1
+     ],
+     "type": "prep",
+     "label": "Prepositional phrase",
+     "translation": "By these tears and your right hand"
+    }
+   ]
+  },
+  {
+   "id": "jlc8:aeneadum-genetrix-hominum-divumque",
+   "text": "Aeneadum genetrīx, hominum dīvumque voluptās, alma Venus, caelī subter lābentia signa quae mare nāvigerum quae terrās frūgiferentīs concelebrās.",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "Lucr. 1.1",
+   "translation": "Mother of Aeneas' descendants, pleasure of men and of gods, nourishing Venus, you who beneath the gliding signs of heaven fill the ship-bearing sea and the fruit-bearing lands.",
+   "difficulty": "Centurio",
+   "words": [
+    {
+     "text": "Aeneadum",
+     "case": "gen",
+     "translation": "of Aeneas' descendants"
+    },
+    {
+     "text": "genetrīx,",
+     "case": "voc",
+     "translation": "mother"
+    },
+    {
+     "text": "hominum",
+     "case": "gen",
+     "translation": "of the people"
+    },
+    {
+     "text": "dīvumque",
+     "case": "gen",
+     "translation": "of the gods"
+    },
+    {
+     "text": "voluptās,",
+     "case": "voc",
+     "translation": "pleasure, delight"
+    },
+    {
+     "text": "alma",
+     "case": "voc",
+     "translation": "nourishing"
+    },
+    {
+     "text": "Venus,",
+     "case": "voc",
+     "translation": "Venus"
+    },
+    {
+     "text": "caelī",
+     "case": "gen",
+     "translation": "of heaven"
+    },
+    {
+     "text": "subter",
+     "case": "none",
+     "translation": "beneath"
+    },
+    {
+     "text": "lābentia",
+     "case": "acc",
+     "verbal": {
+      "form": "participle",
+      "tense": "Present",
+      "voice": "Active"
+     },
+     "translation": "gliding"
+    },
+    {
+     "text": "signa",
+     "case": "acc",
+     "translation": "signs"
+    },
+    {
+     "text": "quae",
+     "case": "nom",
+     "translation": "who, which"
+    },
+    {
+     "text": "mare",
+     "case": "acc",
+     "translation": "sea"
+    },
+    {
+     "text": "nāvigerum",
+     "case": "acc",
+     "translation": "ship-bearing"
+    },
+    {
+     "text": "quae",
+     "case": "nom",
+     "translation": "who, which"
+    },
+    {
+     "text": "terrās",
+     "case": "acc",
+     "translation": "lands"
+    },
+    {
+     "text": "frūgiferentīs",
+     "case": "acc",
+     "verbal": {
+      "form": "participle",
+      "tense": "Present",
+      "voice": "Active"
+     },
+     "translation": "fruit-bearing"
+    },
+    {
+     "text": "concelebrās.",
+     "case": "verb",
+     "tense": "Present",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": true,
+     "askMood": false,
+     "person": "2nd",
+     "number": "Singular",
+     "subjInVerb": true,
+     "translation": "you fill"
+    }
+   ],
+   "links": [
+    {
+     "from": 1,
+     "to": 0,
+     "type": "poss",
+     "label": "Possessor Link",
+     "translation": "mother of Aeneas' descendants"
+    },
+    {
+     "from": 4,
+     "to": 2,
+     "type": "poss",
+     "label": "Possessor Link",
+     "translation": "pleasure of men"
+    },
+    {
+     "from": 4,
+     "to": 3,
+     "type": "poss",
+     "label": "Possessor Link",
+     "translation": "pleasure of gods"
+    },
+    {
+     "from": 5,
+     "to": 6,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 9,
+     "to": 10,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 12,
+     "to": 13,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 16,
+     "to": 15,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 10,
+     "to": 7,
+     "type": "poss",
+     "label": "Possessor Link",
+     "translation": "signs of heaven"
+    },
+    {
+     "from": 0,
+     "to": 1,
+     "type": "appos",
+     "label": "Apposition Link"
+    },
+    {
+     "from": 2,
+     "to": 4,
+     "type": "appos",
+     "label": "Apposition Link"
+    },
+    {
+     "from": 8,
+     "to": 10,
+     "type": "prep",
+     "label": "Preposition Link",
+     "translation": "beneath the gliding signs of heaven"
+    }
+   ],
+   "clauses": [
+    {
+     "start": 7,
+     "end": 17,
+     "type": "relative",
+     "label": "Relative",
+     "translation": "you who beneath the gliding signs of heaven fill the ship-bearing sea and the fruit-bearing lands"
+    }
+   ],
+   "phrases": [
+    {
+     "from": 0,
+     "to": 1,
+     "start": 0,
+     "end": 1,
+     "type": "appos",
+     "label": "Apposition",
+     "translation": "mother of Aeneas' descendants"
+    },
+    {
+     "from": 2,
+     "to": 4,
+     "start": 2,
+     "end": 4,
+     "type": "appos",
+     "label": "Apposition",
+     "translation": "pleasure of men and gods"
+    },
+    {
+     "from": 8,
+     "to": 10,
+     "start": 7,
+     "end": 10,
+     "type": "prep",
+     "label": "Prepositional phrase",
+     "translation": "beneath the gliding signs of heaven"
+    }
+   ],
+   "unlinked": [
+    [
+     2,
+     3
+    ],
+    [
+     4,
+     5
+    ]
+   ]
+  },
+  {
+   "id": "jlc8:nam-in-scrinio-eius",
+   "text": "Nam in scrīniō eius datus ā Cārō dē mē libellus inventus est.",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "Plin.Ep.VII.27.14",
+   "translation": "For in his writing-desk an accusation was found, given by Carus about me.",
+   "difficulty": "Legatus",
+   "words": [
+    {
+     "text": "Nam",
+     "case": "none",
+     "translation": "for"
+    },
+    {
+     "text": "in",
+     "case": "none",
+     "translation": "in, into, on"
+    },
+    {
+     "text": "scrīniō",
+     "case": "abl",
+     "translation": "writing desk"
+    },
+    {
+     "text": "eius",
+     "case": "gen",
+     "translation": "his, her, its"
+    },
+    {
+     "text": "datus",
+     "case": "nom",
+     "verbal": {
+      "form": "participle",
+      "tense": "Perfect",
+      "voice": "Passive"
+     },
+     "translation": "given"
+    },
+    {
+     "text": "ā",
+     "case": "none",
+     "translation": "by, from"
+    },
+    {
+     "text": "Cārō",
+     "case": "abl",
+     "translation": "Carus"
+    },
+    {
+     "text": "dē",
+     "case": "none",
+     "translation": "down from, about"
+    },
+    {
+     "text": "mē",
+     "case": "acc",
+     "translation": "me"
+    },
+    {
+     "text": "libellus",
+     "case": "nom",
+     "translation": "an accusation"
+    },
+    {
+     "text": "inventus est.",
+     "case": "verb",
+     "tense": "Perfect",
+     "voice": "Passive",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": true,
+     "askMood": false,
+     "person": "3rd",
+     "number": "Singular",
+     "translation": ""
+    }
+   ],
+   "links": [
+    {
+     "from": 4,
+     "to": 9,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 2,
+     "to": 3,
+     "type": "poss",
+     "label": "Possessor Link",
+     "translation": "his writing-desk"
+    },
+    {
+     "from": 5,
+     "to": 6,
+     "type": "prep",
+     "label": "Preposition Link",
+     "translation": "by Carus"
+    },
+    {
+     "from": 7,
+     "to": 8,
+     "type": "prep",
+     "label": "Preposition Link",
+     "translation": "about me"
+    },
+    {
+     "from": 1,
+     "to": 2,
+     "type": "prep",
+     "label": "Preposition Link",
+     "translation": "in his writing-desk"
+    }
+   ],
+   "clauses": [],
+   "phrases": [
+    {
+     "from": 5,
+     "to": 6,
+     "start": 5,
+     "end": 6,
+     "type": "prep",
+     "label": "Prepositional phrase",
+     "translation": "by Carus"
+    },
+    {
+     "from": 7,
+     "to": 8,
+     "start": 7,
+     "end": 8,
+     "type": "prep",
+     "label": "Prepositional phrase",
+     "translation": "about me"
+    },
+    {
+     "from": 1,
+     "to": 2,
+     "start": 1,
+     "end": 3,
+     "type": "prep",
+     "label": "Prepositional phrase",
+     "translation": "in his writing-desk"
+    }
+   ]
+  },
+  {
+   "id": "jlc8:ex-quo-coniectari-potest",
+   "text": "ex quō coniectārī potest, quia reīs mōris est submittere capillum, recīsōs meōrum capillōs dēpulsī quod imminēbat perīculī signum fuisse.",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "Plin.Ep.VII.27.14",
+   "translation": "from which it can be guessed, since it was of custom for accused people to let their hair grow, that the cut hair of my people was a sign of the danger, which was overhanging me, being driven away.",
+   "difficulty": "Legatus",
+   "words": [
+    {
+     "text": "ex",
+     "case": "none",
+     "translation": "out of"
+    },
+    {
+     "text": "quō",
+     "case": "abl",
+     "translation": "which"
+    },
+    {
+     "text": "coniectārī",
+     "case": "inf",
+     "askType": true,
+     "infTense": "Present",
+     "infVoice": "Passive",
+     "translation": "to be guessed"
+    },
+    {
+     "text": "potest,",
+     "case": "verb",
+     "tense": "Present",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": true,
+     "askMood": false,
+     "person": "3rd",
+     "number": "Singular",
+     "translation": "he/she/it can"
+    },
+    {
+     "text": "quia",
+     "case": "none",
+     "translation": "because"
+    },
+    {
+     "text": "reīs",
+     "case": "dat",
+     "translation": "for defendants"
+    },
+    {
+     "text": "mōris",
+     "case": "gen",
+     "translation": "of custom"
+    },
+    {
+     "text": "est",
+     "case": "verb",
+     "tense": "Present",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": true,
+     "askMood": false,
+     "person": "3rd",
+     "number": "Singular",
+     "translation": "he/she/it is"
+    },
+    {
+     "text": "submittere",
+     "case": "inf",
+     "askType": true,
+     "infTense": "Present",
+     "infVoice": "Active",
+     "translation": "to let grow"
+    },
+    {
+     "text": "capillum,",
+     "case": "acc",
+     "translation": "hair"
+    },
+    {
+     "text": "recīsōs",
+     "case": "acc",
+     "verbal": {
+      "form": "participle",
+      "tense": "Perfect",
+      "voice": "Passive"
+     },
+     "translation": "cut down"
+    },
+    {
+     "text": "meōrum",
+     "case": "gen",
+     "translation": "of my [slaves]"
+    },
+    {
+     "text": "capillōs",
+     "case": "acc",
+     "translation": "hair"
+    },
+    {
+     "text": "dēpulsī",
+     "case": "gen",
+     "verbal": {
+      "form": "participle",
+      "tense": "Perfect",
+      "voice": "Passive"
+     },
+     "translation": "driven away"
+    },
+    {
+     "text": "quod",
+     "case": "nom",
+     "translation": "which"
+    },
+    {
+     "text": "imminēbat",
+     "case": "verb",
+     "tense": "Imperfect",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": true,
+     "askMood": false,
+     "person": "3rd",
+     "number": "Singular",
+     "subjInVerb": true,
+     "translation": "was overhanging"
+    },
+    {
+     "text": "perīculī",
+     "case": "gen",
+     "translation": "danger"
+    },
+    {
+     "text": "signum",
+     "case": "acc",
+     "translation": "a sign"
+    },
+    {
+     "text": "fuisse.",
+     "case": "inf",
+     "askType": true,
+     "infTense": "Perfect",
+     "infVoice": "Active",
+     "translation": "to have been"
+    }
+   ],
+   "links": [
+    {
+     "from": 11,
+     "to": 12,
+     "type": "poss",
+     "label": "Possessor Link",
+     "translation": "the hair of my [slaves]"
+    },
+    {
+     "from": 17,
+     "to": 16,
+     "type": "poss",
+     "label": "Possessor Link",
+     "translation": "sign of the danger"
+    },
+    {
+     "from": 10,
+     "to": 12,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 13,
+     "to": 16,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 0,
+     "to": 1,
+     "type": "prep",
+     "label": "Preposition Link",
+     "translation": "from which"
+    }
+   ],
+   "clauses": [
+    {
+     "start": 10,
+     "end": 18,
+     "type": "ind-statement",
+     "label": "Indirect statement",
+     "translation": "that the cut hair of my [slaves] was a sign that the danger which was overhanging me had been driven away."
+    },
+    {
+     "start": 14,
+     "end": 15,
+     "type": "relative",
+     "label": "Relative",
+     "translation": "which was hanging over [me]"
+    }
+   ],
+   "phrases": [
+    {
+     "from": 0,
+     "to": 1,
+     "start": 0,
+     "end": 1,
+     "type": "prep",
+     "label": "Prepositional phrase",
+     "translation": "from which"
+    }
+   ]
+  },
+  {
+   "id": "jlc8:perfacile-factu-esse-illis",
+   "text": "Perfacile factū esse illīs probat cōnāta perficere,",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "DBG 1.3.6",
+   "translation": "He proved to them that to complete these attempts was extremely easy to do.",
+   "difficulty": "Miles",
+   "words": [
+    {
+     "text": "Perfacile",
+     "case": "nom",
+     "translation": "extremely easy"
+    },
+    {
+     "text": "factū",
+     "case": "abl",
+     "verbal": {
+      "form": "supine"
+     },
+     "translation": "to do"
+    },
+    {
+     "text": "esse",
+     "case": "inf",
+     "askType": false,
+     "translation": "to be"
+    },
+    {
+     "text": "illīs",
+     "case": "dat",
+     "translation": "to/for those"
+    },
+    {
+     "text": "probat",
+     "case": "verb",
+     "tense": "Present",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": false,
+     "askMood": false,
+     "person": "3rd",
+     "number": "Singular",
+     "translation": "he proves"
+    },
+    {
+     "text": "cōnāta",
+     "case": "acc",
+     "translation": "attempts, undertakings"
+    },
+    {
+     "text": "perficere,",
+     "case": "inf",
+     "askType": false,
+     "translation": "to accomplish"
+    }
+   ],
+   "links": [],
+   "clauses": [
+    {
+     "start": 0,
+     "end": 2,
+     "type": "ind-statement",
+     "label": "Indirect statement",
+     "translation": "it would be very easy"
+    }
+   ],
+   "phrases": []
+  },
+  {
+   "id": "jlc8:propterea-quod-ipse-suae",
+   "text": "proptereā quod ipse suae cīvitātis imperium obtentūrus esset.",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "DBG 1.3.6",
+   "translation": "On account of the fact that he himself was about to obtain authority over his own state.",
+   "difficulty": "Miles",
+   "words": [
+    {
+     "text": "proptereā",
+     "case": "none",
+     "translation": "on account of"
+    },
+    {
+     "text": "quod",
+     "case": "acc",
+     "translation": "which"
+    },
+    {
+     "text": "ipse",
+     "case": "nom",
+     "translation": "he himself"
+    },
+    {
+     "text": "suae",
+     "case": "gen",
+     "translation": "his own, her own, its own"
+    },
+    {
+     "text": "cīvitātis",
+     "case": "gen",
+     "translation": "state, city"
+    },
+    {
+     "text": "imperium",
+     "case": "acc",
+     "translation": "control, power, authority"
+    },
+    {
+     "text": "obtentūrus",
+     "case": "nom",
+     "verbal": {
+      "form": "participle",
+      "tense": "Future",
+      "voice": "Active"
+     },
+     "translation": "about to obtain"
+    },
+    {
+     "text": "esset.",
+     "case": "verb",
+     "tense": "Imperfect",
+     "voice": "Active",
+     "mood": "Subjunctive",
+     "askTense": true,
+     "askVoice": false,
+     "askMood": false,
+     "person": "3rd",
+     "number": "Singular",
+     "translation": "he/she/it might be"
+    }
+   ],
+   "links": [
+    {
+     "from": 3,
+     "to": 4,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 5,
+     "to": 4,
+     "type": "poss",
+     "label": "Possessor Link",
+     "translation": "power of the state"
+    }
+   ],
+   "clauses": [],
+   "phrases": []
+  },
+  {
+   "id": "jlc8:non-esse-dubium-quin",
+   "text": "nōn esse dubium quīn tōtīus Galliae plūrimum Helvētiī possent.",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "DBG 1.3.6",
+   "translation": "There is no doubt but that the Helvetians are the most powerful in the whole of Gaul.",
+   "difficulty": "Miles",
+   "words": [
+    {
+     "text": "nōn",
+     "case": "none",
+     "translation": "not"
+    },
+    {
+     "text": "esse",
+     "case": "inf",
+     "askType": false,
+     "translation": "to be"
+    },
+    {
+     "text": "dubium",
+     "case": "nom",
+     "translation": "doubt"
+    },
+    {
+     "text": "quīn",
+     "case": "none",
+     "translation": "but that, why not"
+    },
+    {
+     "text": "tōtīus",
+     "case": "gen",
+     "translation": "whole"
+    },
+    {
+     "text": "Galliae",
+     "case": "gen",
+     "translation": "Gaul"
+    },
+    {
+     "text": "plūrimum",
+     "case": "acc",
+     "translation": "the most"
+    },
+    {
+     "text": "Helvētiī",
+     "case": "nom",
+     "translation": "the Helvetians"
+    },
+    {
+     "text": "possent.",
+     "case": "verb",
+     "tense": "Imperfect",
+     "voice": "Active",
+     "mood": "Subjunctive",
+     "askTense": true,
+     "askVoice": false,
+     "askMood": false,
+     "person": "3rd",
+     "number": "Plural",
+     "translation": "are able"
+    }
+   ],
+   "links": [
+    {
+     "from": 4,
+     "to": 5,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 6,
+     "to": 5,
+     "type": "poss",
+     "label": "Possessor Link",
+     "translation": "the most of Gaul"
+    }
+   ],
+   "clauses": [
+    {
+     "start": 3,
+     "end": 8,
+     "type": "doubt",
+     "label": "Doubt",
+     "translation": "that the Helvetians are the most powerful in the whole of Gaul."
+    }
+   ],
+   "phrases": []
+  },
+  {
+   "id": "jlc8:quando-aliud-mihi-iam",
+   "text": "quandō aliud mihi iam miserae nihil ipsa relīquī.",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "Verg.Aen.4.314-319",
+   "translation": "Since I have left myself nothing else in my misery.",
+   "difficulty": "Miles",
+   "words": [
+    {
+     "text": "quandō",
+     "case": "none",
+     "translation": "when, since"
+    },
+    {
+     "text": "aliud",
+     "case": "acc",
+     "translation": "anything"
+    },
+    {
+     "text": "mihi",
+     "case": "dat",
+     "translation": "to me"
+    },
+    {
+     "text": "iam",
+     "case": "none",
+     "translation": "already, now"
+    },
+    {
+     "text": "miserae",
+     "case": "dat",
+     "translation": "miserable, wretched, sad"
+    },
+    {
+     "text": "nihil",
+     "case": "acc",
+     "translation": "nothing, not at all"
+    },
+    {
+     "text": "ipsa",
+     "case": "nom",
+     "translation": "she herself"
+    },
+    {
+     "text": "relīquī.",
+     "case": "verb",
+     "tense": "Perfect",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": false,
+     "askMood": false,
+     "person": "1st",
+     "number": "Singular",
+     "subjInVerb": true,
+     "translation": "I have left"
+    }
+   ],
+   "links": [
+    {
+     "from": 1,
+     "to": 5,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 2,
+     "to": 4,
+     "type": "adj",
+     "label": "Adjective Link"
+    }
+   ],
+   "clauses": [],
+   "phrases": []
+  },
+  {
+   "id": "jlc8:per-conubia-nostra-per",
+   "text": "per cōnūbia nostra, per inceptōs hymenaeōs [tē ōrō].",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "Verg.Aen.4.314-319",
+   "translation": "By our union, by the marriage we have begun [I beg you].",
+   "difficulty": "Miles",
+   "words": [
+    {
+     "text": "per",
+     "case": "none",
+     "translation": "through, by"
+    },
+    {
+     "text": "cōnūbia",
+     "case": "acc",
+     "translation": "union"
+    },
+    {
+     "text": "nostra,",
+     "case": "acc",
+     "translation": "our"
+    },
+    {
+     "text": "per",
+     "case": "none",
+     "translation": "through, by"
+    },
+    {
+     "text": "inceptōs",
+     "case": "acc",
+     "verbal": {
+      "form": "participle",
+      "tense": "Perfect",
+      "voice": "Passive"
+     },
+     "translation": "having been begun"
+    },
+    {
+     "text": "hymenaeōs",
+     "case": "acc",
+     "translation": "marriage"
+    },
+    {
+     "text": "[tē",
+     "case": "acc",
+     "translation": "you"
+    },
+    {
+     "text": "ōrō].",
+     "case": "verb",
+     "tense": "Present",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": false,
+     "askMood": false,
+     "person": "1st",
+     "number": "Singular",
+     "subjInVerb": true,
+     "translation": "I beg"
+    }
+   ],
+   "links": [
+    {
+     "from": 1,
+     "to": 2,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 4,
+     "to": 5,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 0,
+     "to": 1,
+     "type": "prep",
+     "label": "Preposition Link",
+     "translation": "by our union"
+    },
+    {
+     "from": 3,
+     "to": 5,
+     "type": "prep",
+     "label": "Preposition Link",
+     "translation": "by our marriage having been begun"
+    }
+   ],
+   "clauses": [],
+   "phrases": [
+    {
+     "from": 0,
+     "to": 1,
+     "start": 0,
+     "end": 2,
+     "type": "prep",
+     "label": "Prepositional phrase",
+     "translation": "by our union"
+    },
+    {
+     "from": 3,
+     "to": 5,
+     "start": 3,
+     "end": 5,
+     "type": "prep",
+     "label": "Prepositional phrase",
+     "translation": "by our marriage having been begun"
+    }
+   ]
+  },
+  {
+   "id": "jlc8:si-bene-quid-de",
+   "text": "sī bene quid dē tē meruī, fuit aut tibi quicquam dulce meum.",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "Verg.Aen.4.314-319",
+   "translation": "If ever I deserved anything good from you, or if ever anything of mine was sweet to you.",
+   "difficulty": "Miles",
+   "words": [
+    {
+     "text": "sī",
+     "case": "none",
+     "translation": "if"
+    },
+    {
+     "text": "bene",
+     "case": "none",
+     "translation": "well"
+    },
+    {
+     "text": "quid",
+     "case": "acc",
+     "translation": "anything"
+    },
+    {
+     "text": "dē",
+     "case": "none",
+     "translation": "down from, about"
+    },
+    {
+     "text": "tē",
+     "case": "acc",
+     "translation": "you"
+    },
+    {
+     "text": "meruī,",
+     "case": "verb",
+     "tense": "Perfect",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": false,
+     "askMood": false,
+     "person": "1st",
+     "number": "Singular",
+     "subjInVerb": true,
+     "translation": "I earned, deserved"
+    },
+    {
+     "text": "fuit",
+     "case": "verb",
+     "tense": "Perfect",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": false,
+     "askMood": false,
+     "person": "3rd",
+     "number": "Singular",
+     "translation": "he/she/it has been"
+    },
+    {
+     "text": "aut",
+     "case": "none",
+     "translation": "or"
+    },
+    {
+     "text": "tibi",
+     "case": "dat",
+     "translation": "to you"
+    },
+    {
+     "text": "quicquam",
+     "case": "nom",
+     "translation": "anything at all"
+    },
+    {
+     "text": "dulce",
+     "case": "nom",
+     "translation": "sweet"
+    },
+    {
+     "text": "meum.",
+     "case": "nom",
+     "translation": "my, of mine"
+    }
+   ],
+   "links": [
+    {
+     "from": 9,
+     "to": 10,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 9,
+     "to": 11,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 3,
+     "to": 4,
+     "type": "prep",
+     "label": "Preposition Link",
+     "translation": "from you"
+    }
+   ],
+   "clauses": [],
+   "phrases": [
+    {
+     "from": 3,
+     "to": 4,
+     "start": 3,
+     "end": 4,
+     "type": "prep",
+     "label": "Prepositional phrase",
+     "translation": "from you"
+    }
+   ]
+  },
+  {
+   "id": "jlc8:miserere-domus-labentis-et",
+   "text": "miserēre domūs lābentis et istam, ōrō.",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "Verg.Aen.4.314-319",
+   "translation": "Have mercy on this falling home and this woman, I beg you.",
+   "difficulty": "Miles",
+   "words": [
+    {
+     "text": "miserēre",
+     "case": "verb",
+     "tense": "Present",
+     "voice": "Active",
+     "mood": "Imperative",
+     "askTense": true,
+     "askVoice": true,
+     "askMood": true,
+     "person": "2nd",
+     "number": "Singular",
+     "subjInVerb": true,
+     "translation": "have mercy!"
+    },
+    {
+     "text": "domūs",
+     "case": "gen",
+     "translation": "home, house"
+    },
+    {
+     "text": "lābentis",
+     "case": "gen",
+     "verbal": {
+      "form": "participle",
+      "tense": "Present",
+      "voice": "Active"
+     },
+     "translation": "falling, sliding"
+    },
+    {
+     "text": "et",
+     "case": "none",
+     "translation": "and"
+    },
+    {
+     "text": "istam,",
+     "case": "acc",
+     "translation": "that woman"
+    },
+    {
+     "text": "ōrō.",
+     "case": "verb",
+     "tense": "Present",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": false,
+     "askMood": false,
+     "person": "1st",
+     "number": "Singular",
+     "subjInVerb": true,
+     "translation": "I beg"
+    }
+   ],
+   "links": [
+    {
+     "from": 1,
+     "to": 2,
+     "type": "adj",
+     "label": "Adjective Link"
+    }
+   ],
+   "clauses": [],
+   "phrases": []
+  },
+  {
+   "id": "jlc8:si-quis-adhuc-precibus",
+   "text": "sī quis adhūc precibus locus, exue mentem.",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "Verg.Aen.4.314-319",
+   "translation": "If even now there is some place for prayers, change your mind.",
+   "difficulty": "Miles",
+   "words": [
+    {
+     "text": "sī",
+     "case": "none",
+     "translation": "if"
+    },
+    {
+     "text": "quis",
+     "case": "nom",
+     "translation": "any"
+    },
+    {
+     "text": "adhūc",
+     "case": "none",
+     "translation": "still, so far"
+    },
+    {
+     "text": "precibus",
+     "case": "dat",
+     "translation": "for prayers"
+    },
+    {
+     "text": "locus,",
+     "case": "nom",
+     "translation": "the place"
+    },
+    {
+     "text": "exue",
+     "case": "verb",
+     "tense": "Present",
+     "voice": "Active",
+     "mood": "Imperative",
+     "askTense": true,
+     "askVoice": false,
+     "askMood": true,
+     "person": "2nd",
+     "number": "Singular",
+     "subjInVerb": true,
+     "translation": "put away"
+    },
+    {
+     "text": "mentem.",
+     "case": "acc",
+     "translation": "thought, plan, mind, idea"
+    }
+   ],
+   "links": [
+    {
+     "from": 1,
+     "to": 4,
+     "type": "adj",
+     "label": "Adjective Link"
+    }
+   ],
+   "clauses": [],
+   "phrases": []
+  },
+  {
+   "id": "jlc8:noctem-sideribus-inlustrem-et",
+   "text": "Noctem sīderibus inlūstrem et placidō marī quiētam quasi convincendum ad scelus dīī praebuēre.",
+   "author": "MMB",
+   "category": "",
+   "pack": "JLC VIII",
+   "passage": "Tac.Ann.XIV.5",
+   "translation": "The gods offered a night brilliant with stars and quiet as a calm sea, as if to convict the crime.",
+   "difficulty": "Legatus",
+   "words": [
+    {
+     "text": "Noctem",
+     "case": "acc",
+     "translation": "night"
+    },
+    {
+     "text": "sīderibus",
+     "case": "abl",
+     "translation": "stars"
+    },
+    {
+     "text": "inlūstrem",
+     "case": "acc",
+     "translation": "brilliant, shining"
+    },
+    {
+     "text": "et",
+     "case": "none",
+     "translation": "and"
+    },
+    {
+     "text": "placidō",
+     "case": "abl",
+     "translation": "placid, calm"
+    },
+    {
+     "text": "marī",
+     "case": "abl",
+     "translation": "sea"
+    },
+    {
+     "text": "quiētam",
+     "case": "acc",
+     "translation": "quiet"
+    },
+    {
+     "text": "quasi",
+     "case": "none",
+     "translation": "as if"
+    },
+    {
+     "text": "convincendum",
+     "case": "acc",
+     "verbal": {
+      "form": "gerund"
+     },
+     "translation": "to convict"
+    },
+    {
+     "text": "ad",
+     "case": "none",
+     "translation": "to, towards"
+    },
+    {
+     "text": "scelus",
+     "case": "acc",
+     "translation": "crime, wickedness"
+    },
+    {
+     "text": "dīī",
+     "case": "nom",
+     "translation": "the gods"
+    },
+    {
+     "text": "praebuēre.",
+     "case": "verb",
+     "tense": "Perfect",
+     "voice": "Active",
+     "mood": "Indicative",
+     "askTense": true,
+     "askVoice": true,
+     "askMood": false,
+     "person": "3rd",
+     "number": "Plural",
+     "subjInVerb": true,
+     "translation": "they provided"
+    }
+   ],
+   "links": [
+    {
+     "from": 0,
+     "to": 2,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 0,
+     "to": 6,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 4,
+     "to": 5,
+     "type": "adj",
+     "label": "Adjective Link"
+    },
+    {
+     "from": 9,
+     "to": 10,
+     "type": "prep",
+     "label": "Preposition Link",
+     "translation": "to the crime"
+    }
+   ],
+   "clauses": [],
+   "phrases": [
+    {
+     "from": 9,
+     "to": 10,
+     "start": 9,
+     "end": 10,
+     "type": "prep",
+     "label": "Prepositional phrase",
+     "translation": "to the crime"
+    }
+   ]
+  }
+ ]
+}</script>
 <!-- ===== LAYOUT PREVIEW (29 October 2026). Not part of the app: a preview copy only. ===== -->
 <style id="lay-preview-css">
   /* Preview bar: fixed band over the page, outside the app's own layout */
@@ -10252,7 +11771,7 @@ body.lay-phone .sg-pop .sg-leg .sg-keys { margin-left: 0; }
       <li>Switch between the five layouts in the bar at the top (fold it with "Hide controls").</li>
       <li>Pick a tool (Nominative, Accusative…) and tap words to mark them; tap Check.</li>
       <li>Press "Show the key's marks" and look at how phrases, clauses and links are drawn.</li>
-      <li>After a check, try the four answer-key views (Table, Rows, Interlinear, Both), with "Only what's wrong" on and off.</li>
+      <li>After a check, try the four answer-key views (Table, Rows, Interlinear, Hybrid), with "Only what's wrong" on and off.</li>
       <li>On a phone, try it upright and turned sideways.</li>
     </ol>
     <fieldset>
@@ -10292,11 +11811,11 @@ body.lay-phone .sg-pop .sg-leg .sg-keys { margin-left: 0; }
       <textarea id="fb-marks" name="marks"></textarea>
     </div>
     <div class="fb-field">
-      <label class="fb-l" for="fb-akey">Which answer key would you rather read? (Check a sentence, then try the buttons above the key: Table, Rows, Interlinear, Both.)</label>
+      <label class="fb-l" for="fb-akey">Which answer key would you rather read? (Check a sentence, then try the buttons above the key: Table, Rows, Interlinear, Hybrid.)</label>
       <select id="fb-akey" name="akey">
         <option value="">Choose one</option>
         <option>Table (one row per question)</option><option>Rows (one line per word)</option>
-        <option>Interlinear (answers under each word)</option><option>Both (interlinear for mistakes, rows for the whole key)</option>
+        <option>Interlinear (answers under each word)</option><option>Hybrid (interlinear for mistakes, rows for the whole key)</option>
         <option>No preference</option>
       </select>
     </div>
@@ -10323,6 +11842,7 @@ body.lay-phone .sg-pop .sg-leg .sg-keys { margin-left: 0; }
   </form>
 </div>
 
+<script type="application/json" id="lay-pack-l3">{"name": "l3", "ranks": [{"key": "Tiro", "label": "Tiro", "blurb": "Sentences at this level are limited to present tense; nominative, accusative and ablative cases; basic prepositional phrases and simple noun-adjective agreement."}, {"key": "Miles", "label": "Miles", "blurb": "Sentences at this level add the perfect, imperfect and future tenses, as well as the genitive and dative cases and basic uses of the infinitive."}, {"key": "Centurio", "label": "Centurio", "blurb": "Sentences at this level add the pluperfect and future perfect tenses, as well as the present, imperfect and future tenses of the passive voice, and you begin seeing relative clauses."}, {"key": "Legatus", "label": "Legatus", "blurb": "Sentences at this level include the perfect, pluperfect, and future perfect tenses of the passive voice, as well as indirect statements and ablative absolutes."}, {"key": "Imperator", "label": "Imperator", "blurb": "Sentences at this level include all verb tenses, voices and moods, all cases, and all kinds of syntactic connections."}], "sentences": [{"id": "l3:in-eius-lecto-ingente", "text": "In ēius lectō ingente Graecīs conditōrem strangulāvistī.", "author": "MMB", "category": "Latin III", "pack": "l3", "passage": "", "translation": "For the Greeks, you strangled the founder in his huge bed.", "difficulty": "Miles", "words": [{"text": "In", "case": "none", "translation": "in"}, {"text": "ēius", "case": "gen", "translation": "of him"}, {"text": "lectō", "case": "abl", "translation": "bed"}, {"text": "ingente", "case": "abl", "translation": "huge"}, {"text": "Graecīs", "case": "dat", "translation": "for the Greeks"}, {"text": "conditōrem", "case": "acc", "translation": "the founder"}, {"text": "strangulāvistī.", "case": "verb", "tense": "Perfect", "voice": "Active", "mood": "Indicative", "askVoice": false, "askMood": false, "subjInVerb": true, "subjPronoun": "tū", "translation": "you have strangled"}], "links": [{"from": 1, "to": 2, "type": "poss", "label": "Possessor Link"}, {"from": 2, "to": 3, "type": "adj", "label": "Adjective Link"}], "clauses": [{"start": 0, "end": 3, "type": "clause-prep", "label": "Prepositional Phrase", "translation": "in his huge bed"}]}, {"id": "l3:quando-animalia-in-colle", "text": "Quandō animālia in colle incendimus, dōna īnfēlīcia Iovī parāmus.", "author": "MMB", "category": "Latin III", "pack": "l3", "passage": "", "translation": "When we burn the animals on the hill, we prepare sad gifts for Jupiter.", "difficulty": "Miles", "words": [{"text": "Quandō", "case": "none", "translation": "when"}, {"text": "animālia", "case": "acc", "translation": "animals"}, {"text": "in", "case": "none", "translation": "on"}, {"text": "colle", "case": "abl", "translation": "the hill"}, {"text": "incendimus,", "case": "verb", "tense": "Present", "voice": "Active", "mood": "Indicative", "askVoice": false, "askMood": false, "subjInVerb": true, "subjPronoun": "nōs", "translation": "we burn"}, {"text": "dōna", "case": "acc", "translation": "gifts"}, {"text": "īnfēlīcia", "case": "acc", "translation": "sad"}, {"text": "Iovī", "case": "dat", "translation": "for Jupiter"}, {"text": "parāmus.", "case": "verb", "tense": "Present", "voice": "Active", "mood": "Indicative", "askVoice": false, "askMood": false, "subjInVerb": true, "subjPronoun": "nōs", "translation": "we prepare"}], "links": [{"from": 5, "to": 6, "type": "adj", "label": "Adjective Link"}], "clauses": [{"start": 2, "end": 3, "type": "clause-prep", "label": "Prepositional Phrase", "translation": "on the hill"}]}, {"id": "l3:artibus-antiquis-amitae-agros", "text": "Artibus antīquīs amitae agrōs auxērāmus.", "author": "MMB", "category": "Latin III", "pack": "l3", "passage": "", "translation": "We had increased the territory for our aunt by our ancient arts.", "difficulty": "Miles", "words": [{"text": "Artibus", "case": "abl", "translation": "arts"}, {"text": "antīquīs", "case": "abl", "translation": "old"}, {"text": "amitae", "case": "dat", "translation": "for the aunt"}, {"text": "agrōs", "case": "acc", "translation": "territory"}, {"text": "auxērāmus.", "case": "verb", "tense": "Pluperfect", "voice": "Active", "mood": "Indicative", "askVoice": false, "askMood": false, "subjInVerb": true, "subjPronoun": "nōs", "translation": "we had increased"}], "links": [{"from": 0, "to": 1, "type": "adj", "label": "Adjective Link"}], "clauses": []}, {"id": "l3:aspectus-in-hieme-tibi", "text": "Aspectus in hieme tibi nōn placēbit.", "author": "MMB", "category": "Latin III", "pack": "l3", "passage": "", "translation": "You won't like the view in winter.", "difficulty": "Miles", "words": [{"text": "Aspectus", "case": "nom", "translation": "the view"}, {"text": "in", "case": "none", "translation": "in"}, {"text": "hieme", "case": "abl", "translation": "winter"}, {"text": "tibi", "case": "dat", "translation": "for you"}, {"text": "nōn", "case": "none", "translation": "not"}, {"text": "placēbit.", "case": "verb", "tense": "Future", "voice": "Active", "mood": "Indicative", "askVoice": false, "askMood": false, "translation": "will be pleasing"}], "links": [], "clauses": [{"start": 1, "end": 2, "type": "clause-prep", "label": "Prepositional Phrase", "translation": "in winter"}]}, {"id": "l3:hodie-imperator-oppida-sanguine", "text": "Hodiē imperātor oppida sanguine cīvium terruit.", "author": "MMB", "category": "Latin III", "pack": "l3", "passage": "", "translation": "Today the general has scared the towns with the blood of the citizens.", "difficulty": "Miles", "words": [{"text": "Hodiē", "case": "none", "translation": "today"}, {"text": "imperātor", "case": "nom", "translation": "the general"}, {"text": "oppida", "case": "acc", "translation": "the towns"}, {"text": "sanguine", "case": "abl", "translation": "the blood"}, {"text": "cīvium", "case": "gen", "translation": "of the citizens"}, {"text": "terruit.", "case": "verb", "tense": "Perfect", "voice": "Active", "mood": "Indicative", "askVoice": false, "askMood": false, "translation": "has scared"}], "links": [{"from": 3, "to": 4, "type": "poss", "label": "Possessor Link"}], "clauses": []}, {"id": "l3:templum-ubi-adorabamus-sub", "text": "Templum ubi adōrābāmus sub undīs tandem cadet.", "author": "MMB", "category": "Latin III", "pack": "l3", "passage": "", "translation": "At last, the temple where we used to worship will fall.", "difficulty": "Centurio", "words": [{"text": "Templum", "case": "nom", "translation": "temple"}, {"text": "ubi", "case": "none", "translation": "where"}, {"text": "adōrābāmus", "case": "verb", "tense": "Imperfect", "voice": "Active", "mood": "Indicative", "askVoice": false, "askMood": false, "subjInVerb": true, "subjPronoun": "nōs", "translation": "we used to worship"}, {"text": "sub", "case": "none", "translation": "under"}, {"text": "undīs", "case": "abl", "translation": "the waves"}, {"text": "tandem", "case": "none", "translation": "at last"}, {"text": "cadet.", "case": "verb", "tense": "Future", "voice": "Active", "mood": "Indicative", "askVoice": false, "askMood": false, "translation": "will fall"}], "links": [], "clauses": [{"start": 3, "end": 4, "type": "clause-prep", "label": "Prepositional Phrase", "translation": "under the waves"}, {"start": 1, "end": 2, "type": "clause-rel", "label": "Relative Clause", "translation": "where we used to worship"}]}, {"id": "l3:clara-scelera-colonorum-lugere", "text": "Clāra scelera colōnōrum lūgere potestis, ea tamen scrībere nostrīs līberīs dēbeō.", "author": "MMB", "category": "Latin III", "pack": "l3", "passage": "", "translation": "You can mourn the famous crimes of the settlers; nonetheless, I must write them for our children.", "difficulty": "Centurio", "words": [{"text": "Clāra", "case": "acc", "translation": "famous"}, {"text": "scelera", "case": "acc", "translation": "crimes"}, {"text": "colōnōrum", "case": "gen", "translation": "of the settlers"}, {"text": "lūgere", "case": "inf", "askType": false, "translation": "to mourn"}, {"text": "potestis,", "case": "verb", "tense": "Present", "voice": "Active", "mood": "Indicative", "askVoice": false, "askMood": false, "subjInVerb": true, "subjPronoun": "vōs", "translation": "you all are able to"}, {"text": "ea", "case": "acc", "translation": "them"}, {"text": "tamen", "case": "none", "translation": "however"}, {"text": "scrībere", "case": "inf", "askType": false, "translation": "to write"}, {"text": "nostrīs", "case": "dat", "translation": "our"}, {"text": "līberīs", "case": "dat", "translation": "for the children"}, {"text": "dēbeō.", "case": "verb", "tense": "Present", "voice": "Active", "mood": "Indicative", "askVoice": false, "askMood": false, "subjInVerb": true, "subjPronoun": "ego", "translation": "I must"}], "links": [{"from": 1, "to": 0, "type": "adj", "label": "Adjective Link"}, {"from": 9, "to": 8, "type": "adj", "label": "Adjective Link"}, {"from": 1, "to": 2, "type": "poss", "label": "Possessor Link"}], "clauses": []}]}</script>
 <script id="lay-preview-js">
 (function () {
   const DEMOS = [
@@ -10713,6 +12233,8 @@ body.lay-phone .sg-pop .sg-leg .sg-keys { margin-left: 0; }
     const realAlert = window.alert;
     window.alert = () => {};
     try { applyPack(pack, 'jlc_viii.json'); } catch (e) { console.warn(e); }
+    try { applyPack(BUILTIN_SENTENCES.slice(), 'Built-in', { merge: true }); } catch (e) { console.warn(e); }
+    try { applyPack(JSON.parse(document.getElementById('lay-pack-l3').textContent), 'l3.json', { merge: true }); } catch (e) { console.warn(e); }
     window.alert = realAlert;
     try { selectedDifficulty = null; selectedCategory = 'All'; } catch (e) {}
 
